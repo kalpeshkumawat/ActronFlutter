@@ -1,3 +1,4 @@
+// import 'package:flutter_blue/flutter_blue.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:get/get.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
@@ -7,7 +8,6 @@ class BleController extends GetxController {
   final currentAddress = ''.obs;
   final appVersion = ''.obs;
   final scanComplete = false.obs;
-  final deviceVersion = '1.00.0001';
   late final BluetoothService service;
   BluetoothDevice? connectedDevice;
   BluetoothDevice? selectedDevice;

@@ -5,7 +5,6 @@ import 'package:airlink/services/ble_service.dart';
 import 'package:airlink/views/connection_successfull.dart';
 import 'package:airlink/views/devices_found.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:get/get.dart';
 
 class ConnectingToDevice extends StatefulWidget {
@@ -17,31 +16,21 @@ class ConnectingToDevice extends StatefulWidget {
 
 class _ConnectingToDeviceState extends State<ConnectingToDevice> {
   final bleController = Get.find<BleController>(tag: 'bleController');
-
   late Timer timer;
-
   @override
   void initState() {
-    Future.delayed(const Duration(milliseconds: 100), () {
-      connect();
-    });
-
+    connect();
     super.initState();
   }
 
   connect() async {
-    await BleService().connectToDevice(bleController.selectedDevice!);
-    if (await bleController.selectedDevice!.state.first ==
-            BluetoothDeviceState.connected &&
-        !bleController.isConnectionCancled.value) {
+    await BleService().connectToDevice(bleController.selectedDevice);
+    if (!bleController.isConnectionCancled.value) {
       Get.to(
         () => const ConnectionSuccessfull(),
       );
-    } else if (bleController.isConnectionCancled.value) {
-      BleService().disconnectToDevice(bleController.selectedDevice!);
-      Get.to(
-        () => const DevicesFound(),
-      );
+    } else {
+      BleService().disconnectToDevice(bleController.connectedDevice);
     }
   }
 

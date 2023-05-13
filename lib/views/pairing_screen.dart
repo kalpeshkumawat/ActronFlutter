@@ -24,22 +24,17 @@ class _PairingScreenState extends State<PairingScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              CommonWidgets().text(
-                  text: 'ActronLink Pairing',
-                  size: 32.0,
-                  fontWeight: FontWeight.bold,
-                  textColor: Colors.black,
-                  fontFamily: 'Inter'),
+              CommonWidgets().text('ActronLink Pairing', 32.0, FontWeight.bold,
+                  TextAlign.center, Colors.black, 'Inter'),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 40.0),
                 child: CommonWidgets().text(
-                  text:
-                      'Make sure the ActronLink device is connected to the outdoor board and Bluetooth has been enabled on your phone or tablet',
-                  size: 16.0,
-                  fontWeight: FontWeight.normal,
-                  textColor: Colors.grey,
-                  fontFamily: 'karbon',
-                ),
+                    'Make Sure the AirLink device is connected to the outdoor board and Bluetooth has been enabled on your phone or tablet',
+                    16.0,
+                    FontWeight.normal,
+                    TextAlign.center,
+                    Colors.grey,
+                    'karbon'),
               ),
               Image.asset(
                 'assets/pairing.png',
@@ -49,13 +44,12 @@ class _PairingScreenState extends State<PairingScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 40.0),
                 child: CommonWidgets().text(
-                  text:
-                      'Please note that the serial number for your ActronLink can be located on the bottom of the device',
-                  size: 16.0,
-                  fontWeight: FontWeight.normal,
-                  textColor: Colors.grey,
-                  fontFamily: 'karbon',
-                ),
+                    'Please note that the serial number for your AirLink can be located on the bottom of the device',
+                    16.0,
+                    FontWeight.normal,
+                    TextAlign.center,
+                    Colors.grey,
+                    'karbon'),
               ),
               CommonWidgets().button(
                   name: 'Search for devices',

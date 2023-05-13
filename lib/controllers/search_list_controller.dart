@@ -30,6 +30,8 @@ class SearchListController extends GetxController {
         length: 0,
         type: 'r/w',
         value: ''),
+    // SearchRegisterData(
+    // name: 'saveSettings', startIndex: 9, length: 0, type: 'r/w', value: ''),
     SearchRegisterData(
         name: 'Commanded Operation Mode',
         startIndex: 10,
@@ -62,7 +64,7 @@ class SearchListController extends GetxController {
         name: 'Indoor Fan Speed',
         startIndex: 16,
         length: 0,
-        type: 'r/w',
+        type: 'r',
         value: ''),
     SearchRegisterData(
         name: 'Indoor Fan RPM',

@@ -1,16 +1,19 @@
 import 'package:airlink/controllers/ble_controller.dart';
 import 'package:airlink/controllers/device_details_controller.dart';
-import 'package:airlink/controllers/table_names_controller.dart';
+
+// import 'package:airlink/controllers/device_table_controller.dart';
 import 'package:airlink/controllers/packet_frame_controller.dart';
-import 'package:airlink/models/device_details_model.dart';
 import 'package:airlink/services/ble_service.dart';
-import 'package:airlink/services/device_db_service.dart';
+import 'package:airlink/services/db_service.dart';
+import 'package:airlink/services/device_table.dart';
 import 'package:airlink/services/import_export_service.dart';
 import 'package:airlink/services/packet_frame_service.dart';
-import 'package:airlink/services/sql_service.dart';
+import 'package:airlink/services/sql_db_service.dart';
 import 'package:airlink/services/system_operation_services.dart';
+import 'package:bluetooth_enable_fork/bluetooth_enable_fork.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get/get.dart';
 
 class CommonWidgets {
@@ -35,7 +38,8 @@ class CommonWidgets {
     );
   }
 
-  Widget text({text, size, fontWeight, textColor, fontFamily}) {
+  Widget text(String text, double size, FontWeight fontWeight,
+      TextAlign textAlignment, Color textColor, fontFamily) {
     return Text(
       text,
       style: TextStyle(
@@ -64,8 +68,7 @@ class CommonWidgets {
           contentPadding: const EdgeInsets.only(bottom: 7.0, left: 5.0)),
       style: const TextStyle(fontSize: 16.0),
       onSubmitted: (_) => deviceDetailsController.advancedSearchPage.value ||
-              deviceDetailsController.systemConfigurePage.value ||
-              deviceDetailsController.systemOperationsPage.value
+              deviceDetailsController.operationsTillHpPressure.value
           ? null
           : submitDeviceNameFunction(),
     );
@@ -82,11 +85,12 @@ class CommonWidgets {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             text(
-                text: 'Please select an option',
-                size: 20.0,
-                fontWeight: FontWeight.w600,
-                textColor: Theme.of(context).colorScheme.primary,
-                fontFamily: 'Karbon'),
+                'Please select an option',
+                20.0,
+                FontWeight.w600,
+                TextAlign.center,
+                Theme.of(context).colorScheme.primary,
+                'Karbon'),
             richText(
                 name: 'Import',
                 color: Colors.black,
@@ -103,10 +107,7 @@ class CommonWidgets {
     );
   }
 
-  Widget selectDeviceDialog({
-    context,
-    required List<DeviceDetailsModel> listOfDevices,
-  }) {
+  Widget selectDeviceDialog(context, listOfDevices) {
     return Dialog(
       alignment: Alignment.center,
       child: Container(
@@ -117,11 +118,12 @@ class CommonWidgets {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             text(
-                text: 'Please select the devices, to export',
-                size: 20.0,
-                fontWeight: FontWeight.w600,
-                textColor: Theme.of(context).colorScheme.primary,
-                fontFamily: 'Karbon'),
+                'Please select the devices, to export',
+                20.0,
+                FontWeight.w600,
+                TextAlign.center,
+                Theme.of(context).colorScheme.primary,
+                'Karbon'),
             const SizedBox(
               height: 30.0,
             ),
@@ -135,13 +137,13 @@ class CommonWidgets {
                   index,
                 ) {
                   return richText(
-                      name: listOfDevices[index].name.toString(),
+                      name: listOfDevices[index]['name'].toString(),
                       color: Colors.black,
                       function: () {
                         debugPrint(
-                            'device id for export is ${listOfDevices[index].id}');
+                            'device id for export is ${listOfDevices[index]['id']}');
                         ImportExportService().exportDataToMail(
-                          listOfDevices[index].id,
+                          listOfDevices[index]['id'],
                         );
                         Navigator.pop(context);
                       },
@@ -166,7 +168,7 @@ class CommonWidgets {
         alignment: Alignment.center,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 20.0, horizontal: 10.0),
-          height: MediaQuery.of(context).size.height * .47,
+          height: MediaQuery.of(context).size.height * .75,
           child: Column(
             children: [
               SizedBox(
@@ -175,20 +177,14 @@ class CommonWidgets {
                   itemCount: operaionList.length,
                   itemBuilder: (BuildContext context, int index) {
                     return ListTile(
-                      leading: text(
-                          text: operaionList[index],
-                          size: 15.0,
-                          fontWeight: FontWeight.w600,
-                          textColor: Colors.black,
-                          fontFamily: 'Karbon'),
+                      leading: text(operaionList[index], 15.0, FontWeight.w600,
+                          TextAlign.start, Colors.black, 'Karbon'),
                       trailing: Checkbox(
                         shape: const CircleBorder(),
                         value: operationSelectedValue == index,
                         onChanged: (_) {
                           operationSelectedValue = index;
                           debugPrint('change value is $operationSelectedValue');
-                          deviceDetailsController.operationModeSelectedValue
-                              .value = operationSelectedValue;
                           setState(() {});
                         },
                       ),
@@ -196,6 +192,38 @@ class CommonWidgets {
                   },
                 ),
               ),
+              // Row(
+              //   mainAxisAlignment: MainAxisAlignment.center,
+              //   children: [
+              //     text('Select Mode', 16.0, FontWeight.w600, TextAlign.center,
+              //         Colors.black, 'Karbon'),
+              //   ],
+              // ),
+              // SizedBox(
+              //   height: MediaQuery.of(context).size.height * .25,
+              //   child: ListView.builder(
+              //     itemCount: selectModeList.length,
+              //     itemBuilder: (BuildContext context, int index) {
+              //       return ListTile(
+              //         leading: text(
+              //             selectModeList[index],
+              //             15.0,
+              //             FontWeight.w600,
+              //             TextAlign.start,
+              //             Colors.black,
+              //             'Karbon'),
+              //         trailing: Checkbox(
+              //           shape: const CircleBorder(),
+              //           value: selectModeSelectedValue == index,
+              //           onChanged: (_) {
+              //             selectModeSelectedValue = index;
+              //             setState(() {});
+              //           },
+              //         ),
+              //       );
+              //     },
+              //   ),
+              // ),
               Padding(
                 padding: const EdgeInsets.only(right: 10.0),
                 child: Row(
@@ -221,15 +249,8 @@ class CommonWidgets {
     );
   }
 
-  Widget registerEditDialog({
-    context,
-    data,
-    placeholder,
-    label,
-    type,
-    register,
-    value,
-  }) {
+  Widget registerEditDialog(
+      {context, data, placeholder, label, type, register}) {
     return Dialog(
       alignment: Alignment.center,
       child: SizedBox(
@@ -240,27 +261,29 @@ class CommonWidgets {
               height: 15.0,
             ),
             Padding(
-              padding: const EdgeInsets.all(10.5),
-              child: input(
-                data: data,
-                label: label,
-                inputHintText: data.text,
-                type: type,
-              ),
-            ),
+                padding: const EdgeInsets.all(10.5),
+                child: input(
+                    data: data,
+                    label: label,
+                    inputHintText: placeholder,
+                    type: type)),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 button(
                     name: "Submit",
                     function: () async {
-                      print('update data is ${data.text}');
                       if (data.text == '') {
                         errorSnackbar(title: '', message: "Please enter data");
                       } else {
-                        var updatedData = int.parse(data.text);
-                        if (placeholder.contains('Temperature')) {
-                          updatedData = updatedData * 10;
+                        var updatedData = 0;
+                        var tempData = double.parse(data.text);
+                        if (placeholder.contains('Temperature') &&
+                            !(tempData is int ||
+                                tempData == tempData.roundToDouble())) {
+                          updatedData = (double.parse(data.text.toString()) * 10).toInt();
+                        } else {
+                          updatedData = double.parse(data.text.toString()).toInt();
                         }
                         var newData = [
                           1,
@@ -279,8 +302,8 @@ class CommonWidgets {
                       data.text = '';
                     },
                     buttonColor: Theme.of(context).colorScheme.primary,
-                    width: 100.0,
-                    height: 42.0),
+                    width: 170.0,
+                    height: 52.0),
                 const SizedBox(
                   width: 10.0,
                 ),
@@ -292,7 +315,7 @@ class CommonWidgets {
     );
   }
 
-  Widget connectConfirmDialog({context}) {
+  Widget connectConfirmDialog(context) {
     return AlertDialog(
       title: const Text('Connect'),
       content: const Text('Do you want to connect to the device?'),
@@ -302,10 +325,17 @@ class CommonWidgets {
           child: const Text('Cancel'),
         ),
         TextButton(
-          onPressed: () async {
+          onPressed: () {
             const CircularProgressIndicator();
-            await BleService().connectToDevice(bleController.selectedDevice!);
-            Navigator.pop(context, 'OK');
+            BluetoothEnable.enableBluetooth.then((result) async {
+              if (result == "true") {
+                await BleService()
+                    .connectToDevice(bleController.connectedDevice);
+              } else if (result == "false") {
+                errorSnackbar(title: '', message: "Couldn't connect to device");
+              }
+            });
+            Navigator.of(context, rootNavigator: true).pop();
           },
           child: const Text('OK'),
         ),
@@ -313,57 +343,53 @@ class CommonWidgets {
     );
   }
 
-  Widget deleteDeviceDialog({context, id, deviceDetials}) {
+  Widget deleteDeviceDialog({context, i, deviceDetials}) {
     return AlertDialog(
-      content: text(
-        text: 'Do you want to delete the device?',
-        size: 16.0,
-        fontWeight: FontWeight.w600,
-        textColor: Colors.black,
-        fontFamily: 'Karbon',
-      ),
+      content: text('Do you want to delete the device?', 16.0, FontWeight.w600,
+          TextAlign.center, Colors.black, 'Karbon'),
       actions: <Widget>[
         TextButton(
           onPressed: () => Navigator.pop(context, 'Cancel'),
-          child: text(
-            text: 'Cancel',
-            size: 14.0,
-            fontWeight: FontWeight.w600,
-            textColor: Colors.red,
-            fontFamily: 'Karbon',
-          ),
+          child: text('Cancel', 14.0, FontWeight.w600, TextAlign.right,
+              Colors.red, 'Karbon'),
         ),
         TextButton(
           onPressed: () async {
-            await SqlService.instance.deleteData(
-              tableName: TableNamesController.deviceTable,
-              columnToCheck: 'id',
-              arugumentNeededForDeletion: id.toString(),
-            );
-            await SqlService.instance.deleteData(
-              tableName: TableNamesController.sysOpsTable,
-              columnToCheck: 'id',
-              arugumentNeededForDeletion: id.toString(),
-            );
-            await SqlService.instance.deleteData(
-              tableName: TableNamesController.sysConfigTable,
-              columnToCheck: 'id',
-              arugumentNeededForDeletion: id.toString(),
-            );
-            await SqlService.instance.deleteData(
-              tableName: TableNamesController.errorsTable,
-              columnToCheck: 'id',
-              arugumentNeededForDeletion: id.toString(),
-            );
-            await DeviceDbService().queryDeviceDetails();
+            // await DeviceTable.instance.deleteData(
+            //   tableName: DeviceTableController.deviceTable,
+            //   columnToCheck: 'id',
+            //   arugumentNeededForDeletion: id.toString(),
+            // );
+            // await DeviceTable.instance.deleteData(
+            //   tableName: DeviceTableController.sysOpsTable,
+            //   columnToCheck: 'id',
+            //   arugumentNeededForDeletion: id.toString(),
+            // );
+            // await DeviceTable.instance.deleteData(
+            //   tableName: DeviceTableController.sysConfigTable,
+            //   columnToCheck: 'id',
+            //   arugumentNeededForDeletion: id.toString(),
+            // );
+            // await DeviceTable.instance.deleteData(
+            //   tableName: DeviceTableController.errorsTable,
+            //   columnToCheck: 'id',
+            //   arugumentNeededForDeletion: id.toString(),
+            // );
+            // await SqlDbService().queryDeviceDetails();
+            debugPrint(
+                'before deletion devies are ${bleController.savedDevices}');
+            bleController.savedDevices.removeAt(i);
+            debugPrint(
+                'after deletion devies are ${bleController.savedDevices}');
+            DbService().deleteString('devices');
+            if (bleController.savedDevices.isNotEmpty) {
+              DbService().saveDeviceAfterDeletion(bleController.savedDevices);
+              DbService().getSavedDevices(deviceDetials);
+            }
             Navigator.pop(context, 'OK');
           },
-          child: text(
-              text: 'OK',
-              size: 14.0,
-              fontWeight: FontWeight.w600,
-              textColor: Theme.of(context).colorScheme.primary,
-              fontFamily: 'Karbon'),
+          child: text('OK', 14.0, FontWeight.w600, TextAlign.right,
+              Theme.of(context).colorScheme.primary, 'Karbon'),
         ),
       ],
     );
@@ -385,12 +411,8 @@ class CommonWidgets {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            text(
-                text: 'BMS Configuration',
-                size: 16.0,
-                fontWeight: FontWeight.w600,
-                textColor: Colors.black,
-                fontFamily: 'Karbon'),
+            text('BMS Configuration', 16.0, FontWeight.w600, TextAlign.start,
+                Colors.black, 'Karbon'),
           ],
         ),
       ],
@@ -411,23 +433,18 @@ class CommonWidgets {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  text(
-                    text: list[i]['label'],
-                    size: 14.0,
-                    fontWeight: FontWeight.w400,
-                    textColor: Colors.black,
-                    fontFamily: 'karbon',
-                  ),
+                  text(list[i]['label'], 14.0, FontWeight.w400, TextAlign.start,
+                      Colors.black, 'karbon'),
                   SizedBox(
                     width: MediaQuery.of(context).size.width * .5,
                     height: 25.0,
                     child: text(
-                      text: list[i]['value'].toString(),
-                      size: 14.0,
-                      fontWeight: FontWeight.w600,
-                      textColor: Colors.black,
-                      fontFamily: 'Karbon',
-                    ),
+                        list[i]['value'].toString(),
+                        14.0,
+                        FontWeight.w600,
+                        TextAlign.start,
+                        Colors.black,
+                        'Karbon'),
                   ),
                 ],
               ),
@@ -456,13 +473,8 @@ class CommonWidgets {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Flexible(
-                    child: text(
-                      text: list[i]['label'],
-                      size: 14.0,
-                      fontWeight: FontWeight.w400,
-                      textColor: Colors.black,
-                      fontFamily: 'karbon',
-                    ),
+                    child: text(list[i]['label'], 14.0, FontWeight.w400,
+                        TextAlign.start, Colors.black, 'karbon'),
                   ),
                   SizedBox(
                     width: MediaQuery.of(context).size.width * .6,
@@ -473,7 +485,8 @@ class CommonWidgets {
                       inputHintText: '',
                       type: list[i]['label'] == "Installer"
                           ? TextInputType.text
-                          : TextInputType.number,
+                          : const TextInputType.numberWithOptions(
+                              decimal: true, signed: false),
                       submitDeviceNameFunction: () async {
                         debugPrint('entered into the funciton');
                         if (list[i]['label'].contains('Installer')) {

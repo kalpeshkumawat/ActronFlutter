@@ -8,15 +8,15 @@ String systemConfigModelToJson(SystemConfigModel data) =>
 
 class SystemConfigModel {
   SystemConfigModel({
-    this.id,
-    this.lowPwm,
-    this.medPwm,
-    this.highPwm,
-    this.lowRpm,
-    this.medRpm,
-    this.highRpm,
-    this.fanFilterCountdown,
-    this.controlMode,
+    required this.id,
+    required this.lowPwm,
+    required this.medPwm,
+    required this.highpwm,
+    required this.lowRpm,
+    required this.medRpm,
+    required this.highRpm,
+    required this.fanFilterCountdown,
+    required this.controlMode,
     required this.ecoMode,
     required this.ecoTempDiff,
     required this.ecoOutMinTemp,
@@ -32,15 +32,15 @@ class SystemConfigModel {
     required this.ecoCo2DamperP2,
   });
 
-  String? id;
-  String? lowPwm;
-  String? medPwm;
-  String? highPwm;
-  String? lowRpm;
-  String? medRpm;
-  String? highRpm;
-  String? fanFilterCountdown;
-  String? controlMode;
+  String id;
+  String lowPwm;
+  String medPwm;
+  String highpwm;
+  String lowRpm;
+  String medRpm;
+  String highRpm;
+  String fanFilterCountdown;
+  String controlMode;
   String ecoMode;
   String ecoTempDiff;
   String ecoOutMinTemp;
@@ -60,49 +60,49 @@ class SystemConfigModel {
         id: json["id"],
         lowPwm: json["lowPwm"],
         medPwm: json["medPwm"],
-        highPwm: json["highPwm"],
+        highpwm: json["highpwm"],
         lowRpm: json["lowRpm"],
         medRpm: json["medRpm"],
         highRpm: json["highRpm"],
         fanFilterCountdown: json["fanFilterCountdown"],
         controlMode: json["controlMode"],
-        ecoMode: json["economiserMode"],
-        ecoTempDiff: json["economiserTemperatureDifference"],
-        ecoOutMinTemp: json["economiserOutsideMinTemperature"],
-        ecoOutMaxTemp: json["economiserOutsideMaxTemperature"],
-        ecoOutMaxHum: json["economiserOutsideMaxHumidity"],
-        ecoOutMaxMoist: json["economiserOutsideMaxMoisture"],
-        ecoOutMaxDew: json["economiserOutsideMaxDewPoint"],
-        ecoOutMaxEnthalpy: json["economiserOutsideMaxEnthalpy"],
-        ecoEnthalpy: json["economiserEnthalpyDelta"],
-        ecoCo2P1: json["economiserCO2P1"],
-        ecoCo2P2: json["economiserCO2P2"],
-        ecoCo2DamperP1: json["economiserCO2DamperP1"],
-        ecoCo2DamperP2: json["economiserCO2DamperP2"],
+        ecoMode: json["ecoMode"],
+        ecoTempDiff: json["ecoTempDiff"],
+        ecoOutMinTemp: json["ecoOutMinTemp"],
+        ecoOutMaxTemp: json["ecoOutMaxTemp"],
+        ecoOutMaxHum: json["ecoOutMaxHum"],
+        ecoOutMaxMoist: json["ecoOutMaxMoist"],
+        ecoOutMaxDew: json["ecoOutMaxDew"],
+        ecoOutMaxEnthalpy: json["ecoOutMaxEnthalpy"],
+        ecoEnthalpy: json["ecoEnthalpy"],
+        ecoCo2P1: json["ecoCo2P1"],
+        ecoCo2P2: json["ecoCo2P2"],
+        ecoCo2DamperP1: json["ecoCo2DamperP1"],
+        ecoCo2DamperP2: json["ecoCo2DamperP2"],
       );
 
   Map<String, dynamic> toJson() => {
         "id": id,
         "lowPwm": lowPwm,
         "medPwm": medPwm,
-        "highPwm": highPwm,
+        "highpwm": highpwm,
         "lowRpm": lowRpm,
         "medRpm": medRpm,
         "highRpm": highRpm,
         "fanFilterCountdown": fanFilterCountdown,
         "controlMode": controlMode,
-        "economiserMode": ecoMode,
-        "economiserTemperatureDifference": ecoTempDiff,
-        "economiserOutsideMinTemperature": ecoOutMinTemp,
-        "economiserOutsideMaxTemperature": ecoOutMaxTemp,
-        "economiserOutsideMaxHumidity": ecoOutMaxHum,
-        "economiserOutsideMaxMoisture": ecoOutMaxMoist,
-        "economiserOutsideMaxDewPoint": ecoOutMaxDew,
-        "economiserOutsideMaxEnthalpy": ecoOutMaxEnthalpy,
-        "economiserEnthalpyDelta": ecoEnthalpy,
-        "economiserCO2P1": ecoCo2P1,
-        "economiserCO2P2": ecoCo2P2,
-        "economiserCO2DamperP1": ecoCo2DamperP1,
-        "economiserCO2DamperP2": ecoCo2DamperP2,
+        "ecoMode": ecoMode,
+        "ecoTempDiff": ecoTempDiff,
+        "ecoOutMinTemp": ecoOutMinTemp,
+        "ecoOutMaxTemp": ecoOutMaxTemp,
+        "ecoOutMaxHum": ecoOutMaxHum,
+        "ecoOutMaxMoist": ecoOutMaxMoist,
+        "ecoOutMaxDew": ecoOutMaxDew,
+        "ecoOutMaxEnthalpy": ecoOutMaxEnthalpy,
+        "ecoEnthalpy": ecoEnthalpy,
+        "ecoCo2P1": ecoCo2P1,
+        "ecoCo2P2": ecoCo2P2,
+        "ecoCo2DamperP1": ecoCo2DamperP1,
+        "ecoCo2DamperP2": ecoCo2DamperP2,
       };
 }

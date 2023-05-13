@@ -1,16 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:developer';
 import 'package:airlink/common/common_widgets.dart';
 import 'package:airlink/controllers/ble_controller.dart';
 import 'package:airlink/controllers/device_details_controller.dart';
-import 'package:airlink/controllers/home_controller.dart';
-import 'package:airlink/models/system_operations_model.dart';
+import 'package:airlink/models/sysops_data_model.dart';
 import 'package:airlink/services/ble_service.dart';
-import 'package:airlink/services/device_details_service.dart';
-import 'package:airlink/services/packet_frame_service.dart';
+import 'package:airlink/views/deviceScreen/device_details.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../controllers/packet_frame_controller.dart';
+import '../../../services/packet_frame_service.dart';
 import 'advanced_search.dart';
 
 class SystemOperations extends StatefulWidget {
@@ -22,7 +23,6 @@ class SystemOperations extends StatefulWidget {
 
 class _SystemOperationsState extends State<SystemOperations> {
   final bleController = Get.find<BleController>(tag: 'bleController');
-  final homeController = Get.find<HomeController>(tag: 'homeController');
   final deviceDetailsController =
       Get.find<DeviceDetailsController>(tag: 'deviceDetailsController');
   final packetFrameController =
@@ -31,16 +31,25 @@ class _SystemOperationsState extends State<SystemOperations> {
   final ScrollController scrollControllerTwo = ScrollController();
   TextEditingController data = TextEditingController();
   var timer;
-  var operationModes = ['', 'OFF', 'Cool', 'Heat', 'Fan', 'Auto'];
+  var operationModes = ['', 'Off', 'Cool', 'Heat', 'Fan', 'Auto'];
 
   @override
   void initState() {
-    Future.delayed(const Duration(milliseconds: 500), () {});
-    DeviceDetailsService().managingPages(pageNumber: 2);
+    deviceDetailsController.deviceDetailsPage.value = false;
+    deviceDetailsController.operationsTillHpPressure.value = true;
+    deviceDetailsController.operationsTillVsdMotor.value = true;
+    deviceDetailsController.errorsCodesRegistry.value = false;
+    deviceDetailsController.errorsDatesRegistry.value = false;
+    deviceDetailsController.errorsTimesRegistry.value = false;
+    deviceDetailsController.economiserSettingPage.value = false;
+    deviceDetailsController.graphPage.value = false;
+    deviceDetailsController.advancedSearchPage.value = false;
+    deviceDetailsController.activeErrorsRegistry.value = false;
+    deviceDetailsController.statusFlagsData.value = '';
     if (bleController.connectedDevice != null) {
       bleController.connectedDevice!.requestMtu(128).whenComplete(() async {});
       timer = Timer.periodic(
-        const Duration(seconds: 10),
+        const Duration(seconds: 5),
         (timer) async {
           BleService().sendPackets(100, packetFrameController.sysOps);
         },
@@ -53,18 +62,43 @@ class _SystemOperationsState extends State<SystemOperations> {
 
   @override
   void dispose() {
-    deviceDetailsController.systemOperationsPage.value = false;
-    bleController.connectedDevice != null ? timer.cancel() : null;
-    operationModes.clear();
+    deviceDetailsController.operationsTillHpPressure.value = false;
+    deviceDetailsController.operationsTillVsdMotor.value = false;
+    timer.cancel();
     super.dispose();
   }
 
   getSystemOperationsData() async {
-    deviceDetailsController.sysOpsDataLoading.value = false;
-    for (SystemOperationsModel element
-        in homeController.deviceSystemOperationsData) {
-      print('sys ops data form db is ${element.toJson()}');
-      deviceDetailsController.updateSystemOpsData(element);
+    for (var element in bleController.savedDevices) {
+      if (element['id'] == bleController.selectedId) {
+        var sysOpsData = element['systemOperations']
+            .replaceAll('[', '')
+            .replaceAll(']', '')
+            .split(',');
+        sysOpsData.forEach((element) {
+          Map<String, dynamic> mySysData =
+              jsonDecode(element.replaceAll("'", "\""));
+          debugPrint('data is in $mySysData');
+          deviceDetailsController.updateSystemOperationsData(
+              SystemOperationRegisterModels(
+                  leading: mySysData.keys.first,
+                  trailing: mySysData.values.first));
+        });
+        var sysOpsModesAndSpeeds = element['systemOperationsModesAndSpeeds']
+            .replaceAll('[', '')
+            .replaceAll(']', '')
+            .split(',');
+
+        sysOpsModesAndSpeeds.forEach((element) {
+          Map<String, dynamic> myData =
+              jsonDecode(element.replaceAll("'", "\""));
+          deviceDetailsController.updateSystemOperationsModesAndSpeeds(
+            SystemOperationRegisterModels(
+                leading: myData.keys.first, trailing: myData.values.first),
+          );
+        });
+        inspect(deviceDetailsController.systemOperationsModesAndSpeeds);
+      }
     }
   }
 
@@ -88,10 +122,10 @@ class _SystemOperationsState extends State<SystemOperations> {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios),
             onPressed: () async {
-              bleController.connectedDevice != null
-                  ? await timer.cancel()
-                  : null;
-              Get.back();
+              await timer.cancel();
+              Get.to(
+                () => const DeviceDeatails(),
+              );
             },
           ),
         ),
@@ -116,25 +150,23 @@ class _SystemOperationsState extends State<SystemOperations> {
                                   children: [
                                     SizedBox(
                                       child: CommonWidgets().text(
-                                        text: bleController.selectedDevice !=
-                                                null
-                                            ? bleController.selectedDevice!.name
-                                            : '',
-                                        size: 24.0,
-                                        fontWeight: FontWeight.bold,
-                                        textColor:
-                                            const Color.fromRGBO(65, 64, 66, 1),
-                                        fontFamily: 'karbon',
-                                      ),
+                                          bleController.selectedDevice != null
+                                              ? bleController
+                                                  .selectedDevice!.name
+                                              : '',
+                                          24,
+                                          FontWeight.bold,
+                                          TextAlign.start,
+                                          const Color.fromRGBO(65, 64, 66, 1),
+                                          'karbon'),
                                     ),
                                     CommonWidgets().text(
-                                      text:
-                                          'Last Updated ${deviceDetailsController.lastUpdatedDate.value}',
-                                      size: 14.0,
-                                      fontWeight: FontWeight.w600,
-                                      textColor: Colors.grey,
-                                      fontFamily: 'karbon',
-                                    ),
+                                        'Last Updated 2022 April 16 16:44',
+                                        14,
+                                        FontWeight.w600,
+                                        TextAlign.start,
+                                        Colors.grey,
+                                        'karbon'),
                                   ],
                                 ),
                               ],
@@ -154,28 +186,24 @@ class _SystemOperationsState extends State<SystemOperations> {
                                             MediaQuery.of(context).size.width /
                                                 2.1,
                                         child: CommonWidgets().text(
-                                          text:
-                                              'Model: ${deviceDetailsController.model.value != '' ? deviceDetailsController.model.value : '--'}',
-                                          size: 14.0,
-                                          fontWeight: FontWeight.w600,
-                                          textColor: const Color.fromRGBO(
-                                              88, 89, 91, 1),
-                                          fontFamily: 'karbon',
-                                        ),
+                                            'Model: ${deviceDetailsController.model.value != '' ? deviceDetailsController.model.value : '--'}',
+                                            14,
+                                            FontWeight.w600,
+                                            TextAlign.start,
+                                            const Color.fromRGBO(88, 89, 91, 1),
+                                            'karbon'),
                                       ),
                                       SizedBox(
                                         width:
                                             MediaQuery.of(context).size.width /
                                                 2.1,
                                         child: CommonWidgets().text(
-                                          text:
-                                              'Serial: ${deviceDetailsController.serial.value != '' ? deviceDetailsController.serial.value : '--'}',
-                                          size: 14.0,
-                                          fontWeight: FontWeight.w600,
-                                          textColor: const Color.fromRGBO(
-                                              88, 89, 91, 1),
-                                          fontFamily: 'karbon',
-                                        ),
+                                            'Serial: ${deviceDetailsController.serial.value != '' ? deviceDetailsController.serial.value : '--'}',
+                                            14,
+                                            FontWeight.w600,
+                                            TextAlign.start,
+                                            const Color.fromRGBO(88, 89, 91, 1),
+                                            'karbon'),
                                       ),
                                       Obx(
                                         () => SizedBox(
@@ -186,32 +214,27 @@ class _SystemOperationsState extends State<SystemOperations> {
                                           child: Row(
                                             children: [
                                               CommonWidgets().text(
-                                                text: 'Errors: ',
-                                                size: 14.0,
-                                                fontWeight: FontWeight.w600,
-                                                textColor: const Color.fromRGBO(
-                                                    88, 89, 91, 1),
-                                                fontFamily: 'karbon',
-                                              ),
-                                              Obx(
-                                                () {
-                                                  return CommonWidgets().text(
-                                                    text: deviceDetailsController
-                                                                .activeError
-                                                                .value ==
-                                                            0.toString()
-                                                        ? 'None'
-                                                        : deviceDetailsController
-                                                            .activeError.value,
-                                                    size: 14.0,
-                                                    fontWeight: FontWeight.w600,
-                                                    textColor:
-                                                        const Color.fromRGBO(
-                                                            88, 89, 91, 1),
-                                                    fontFamily: 'Karbon',
-                                                  );
-                                                },
-                                              ),
+                                                  'Errors: ',
+                                                  14.0,
+                                                  FontWeight.w600,
+                                                  TextAlign.end,
+                                                  const Color.fromRGBO(
+                                                      88, 89, 91, 1),
+                                                  'karbon'),
+                                              CommonWidgets().text(
+                                                  deviceDetailsController
+                                                              .activeError
+                                                              .value ==
+                                                          0.toString()
+                                                      ? 'None'
+                                                      : deviceDetailsController
+                                                          .activeError.value,
+                                                  14.0,
+                                                  FontWeight.w600,
+                                                  TextAlign.start,
+                                                  const Color.fromRGBO(
+                                                      88, 89, 91, 1),
+                                                  'Karbon'),
                                             ],
                                           ),
                                         ),
@@ -228,7 +251,7 @@ class _SystemOperationsState extends State<SystemOperations> {
                                       },
                                       buttonColor:
                                           Theme.of(context).colorScheme.primary,
-                                      width: 100.0,
+                                      width: 170.0,
                                       height: 52.0)
                                 ],
                               ),
@@ -245,57 +268,56 @@ class _SystemOperationsState extends State<SystemOperations> {
                                     scrollDirection: Axis.vertical,
                                     shrinkWrap: true,
                                     itemBuilder: (context, i) {
-                                      var values = deviceDetailsController
-                                          .systemOperationsData.value
-                                          .toJson()
-                                          .values
-                                          .toList();
                                       return Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.spaceBetween,
                                         children: [
                                           CommonWidgets().text(
-                                            text: deviceDetailsController
-                                                .systemModesLeading[i].leading,
-                                            size: 16.0,
-                                            fontWeight: FontWeight.w600,
-                                            textColor: const Color.fromRGBO(
-                                                88, 89, 91, 1),
-                                            fontFamily: 'Karbon',
-                                          ),
+                                              deviceDetailsController
+                                                  .systemOperationsModesAndSpeeds[
+                                                      i]
+                                                  .leading,
+                                              16.0,
+                                              FontWeight.w600,
+                                              TextAlign.start,
+                                              const Color.fromRGBO(
+                                                  88, 89, 91, 1),
+                                              'Karbon'),
                                           Row(
                                             children: [
                                               deviceDetailsController
-                                                          .systemModesLeading[i]
+                                                          .systemOperationsModesAndSpeeds[
+                                                              i]
                                                           .type
                                                           .contains('r/w') &&
-                                                      !deviceDetailsController
-                                                          .systemModesLeading[i]
+                                                      deviceDetailsController
+                                                          .systemOperationsData[
+                                                              i]
                                                           .select
                                                   ? GestureDetector(
                                                       onTap: () {
                                                         showDialog(
                                                           context: context,
-                                                          builder: (BuildContext
-                                                                  context) =>
-                                                              CommonWidgets().registerEditDialog(
-                                                                  context:
-                                                                      context,
-                                                                  data: data,
-                                                                  label:
-                                                                      'please enter ${deviceDetailsController.systemModesLeading[i].leading}',
-                                                                  placeholder:
-                                                                      deviceDetailsController
-                                                                          .systemModesLeading[
-                                                                              i]
-                                                                          .leading,
-                                                                  type: TextInputType
-                                                                      .number,
-                                                                  register:
-                                                                      deviceDetailsController
-                                                                          .systemModesLeading[
-                                                                              i]
-                                                                          .reg),
+                                                          builder: (BuildContext context) => CommonWidgets().registerEditDialog(
+                                                              context: context,
+                                                              data: data,
+                                                              label:
+                                                                  'please enter ${deviceDetailsController.systemOperationsModesAndSpeeds[i].leading}',
+                                                              placeholder:
+                                                                  deviceDetailsController
+                                                                      .systemOperationsModesAndSpeeds[
+                                                                          i]
+                                                                      .leading,
+                                                              type: const TextInputType
+                                                                      .numberWithOptions(
+                                                                  decimal: true,
+                                                                  signed:
+                                                                      false),
+                                                              register:
+                                                                  deviceDetailsController
+                                                                      .systemOperationsModesAndSpeeds[
+                                                                          i]
+                                                                      .reg),
                                                         );
                                                       },
                                                       child: Icon(
@@ -312,7 +334,8 @@ class _SystemOperationsState extends State<SystemOperations> {
                                               ),
                                               Obx(
                                                 () => deviceDetailsController
-                                                        .systemModesLeading[i]
+                                                        .systemOperationsModesAndSpeeds[
+                                                            i]
                                                         .select
                                                     ? SizedBox(
                                                         height: 25.0,
@@ -332,24 +355,21 @@ class _SystemOperationsState extends State<SystemOperations> {
                                                                 child:
                                                                     CommonWidgets()
                                                                         .text(
-                                                                  text: item
-                                                                      .toString(),
-                                                                  size: 16.0,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w600,
-                                                                  textColor:
-                                                                      Colors
-                                                                          .black,
-                                                                  fontFamily:
-                                                                      'Karbon',
+                                                                  item.toString(),
+                                                                  16.0,
+                                                                  FontWeight
+                                                                      .w600,
+                                                                  TextAlign
+                                                                      .center,
+                                                                  Colors.black,
+                                                                  'Karbon',
                                                                 ),
                                                               );
                                                             }).toList(),
                                                             onChanged: (val) {
                                                               changeOperationMode(
                                                                 reg: deviceDetailsController
-                                                                    .systemModesLeading[
+                                                                    .systemOperationsModesAndSpeeds[
                                                                         i]
                                                                     .reg,
                                                                 selectedValue:
@@ -359,15 +379,19 @@ class _SystemOperationsState extends State<SystemOperations> {
                                                           ),
                                                         ),
                                                       )
-                                                    : CommonWidgets().text(
-                                                        text: values[i + 1],
-                                                        size: 16.0,
-                                                        fontWeight:
+                                                    : Obx(
+                                                        (() => CommonWidgets().text(
+                                                            deviceDetailsController
+                                                                .systemOperationsModesAndSpeeds[
+                                                                    i]
+                                                                .trailing,
+                                                            16.0,
                                                             FontWeight.w600,
-                                                        textColor: const Color
-                                                                .fromRGBO(
-                                                            88, 89, 91, 1),
-                                                        fontFamily: 'karbon',
+                                                            TextAlign.center,
+                                                            const Color
+                                                                    .fromRGBO(
+                                                                88, 89, 91, 1),
+                                                            'karbon')),
                                                       ),
                                               ),
                                             ],
@@ -376,7 +400,7 @@ class _SystemOperationsState extends State<SystemOperations> {
                                       );
                                     },
                                     itemCount: deviceDetailsController
-                                        .systemModesLeading.length,
+                                        .systemOperationsModesAndSpeeds.length,
                                   ),
                                 );
                               },
@@ -387,154 +411,135 @@ class _SystemOperationsState extends State<SystemOperations> {
                             ),
                             Obx(
                               (() => CommonWidgets().text(
-                                    text:
-                                        'Status Flags: ${deviceDetailsController.statusFlagsData.value != '' ? deviceDetailsController.statusFlagsData.value : '--'}',
-                                    size: 18.0,
-                                    fontWeight: FontWeight.w800,
-                                    textColor:
-                                        const Color.fromRGBO(88, 89, 91, 1),
-                                    fontFamily: 'karbon',
-                                  )),
+                                  'Status Flags: ${deviceDetailsController.statusFlagsData.value != '' ? deviceDetailsController.statusFlagsData.value : '--'}',
+                                  18.0,
+                                  FontWeight.w800,
+                                  TextAlign.center,
+                                  const Color.fromRGBO(88, 89, 91, 1),
+                                  'karbon')),
                             ),
                             const SizedBox(
                               height: 8.0,
                             ),
                             SizedBox(
                               height: MediaQuery.of(context).size.height * .65,
-                              child: Obx(
-                                () {
-                                  return ListView.builder(
-                                    controller: scrollControllerOne,
-                                    itemCount: deviceDetailsController
-                                        .systemOperationsLeading.length,
-                                    itemBuilder: (context, i) {
-                                      var values = deviceDetailsController
-                                          .systemOperationsData.value
-                                          .toJson()
-                                          .values
-                                          .toList();
-                                      return Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
+                              child: ListView.builder(
+                                controller: scrollControllerOne,
+                                itemCount: deviceDetailsController
+                                    .systemOperationsData.length,
+                                itemBuilder: (context, i) {
+                                  return Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      CommonWidgets().text(
+                                          deviceDetailsController
+                                              .systemOperationsData[i].leading,
+                                          14.0,
+                                          FontWeight.w400,
+                                          TextAlign.start,
+                                          const Color.fromRGBO(88, 89, 91, 1),
+                                          'Montserrat'),
+                                      Row(
                                         children: [
-                                          CommonWidgets().text(
-                                            text: deviceDetailsController
-                                                .systemOperationsLeading[i]
-                                                .leading,
-                                            size: 14.0,
-                                            fontWeight: FontWeight.w400,
-                                            textColor: const Color.fromRGBO(
-                                                88, 89, 91, 1),
-                                            fontFamily: 'Montserrat',
+                                          deviceDetailsController
+                                                      .systemOperationsData[i]
+                                                      .type
+                                                      .contains('r/w') &&
+                                                  !deviceDetailsController
+                                                      .systemOperationsData[i]
+                                                      .toggleButton
+                                              ? GestureDetector(
+                                                  onTap: () {
+                                                    showDialog(
+                                                      context: context,
+                                                      builder: (BuildContext
+                                                              context) =>
+                                                          CommonWidgets().registerEditDialog(
+                                                              context: context,
+                                                              data: data,
+                                                              label:
+                                                                  'please enter ${deviceDetailsController.systemOperationsData[i].leading}',
+                                                              placeholder:
+                                                                  deviceDetailsController
+                                                                      .systemOperationsData[
+                                                                          i]
+                                                                      .leading,
+                                                              type: const TextInputType
+                                                                      .numberWithOptions(
+                                                                  decimal: true,
+                                                                  signed:
+                                                                      false),
+                                                              register:
+                                                                  deviceDetailsController
+                                                                      .systemOperationsData[
+                                                                          i]
+                                                                      .reg),
+                                                    );
+                                                  },
+                                                  child: Icon(
+                                                    Icons.edit,
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .primary,
+                                                    size: 14.0,
+                                                  ),
+                                                )
+                                              : const SizedBox(),
+                                          const SizedBox(
+                                            width: 15.0,
                                           ),
-                                          Row(
-                                            children: [
-                                              deviceDetailsController
-                                                          .systemOperationsLeading[
-                                                              i]
-                                                          .type
-                                                          .contains('r/w') &&
-                                                      !deviceDetailsController
-                                                          .systemOperationsLeading[
-                                                              i]
-                                                          .toggleButton
-                                                  ? GestureDetector(
-                                                      onTap: () {
-                                                        data.text =
-                                                            values[i + 6];
-                                                        showDialog(
-                                                          context: context,
-                                                          builder: (BuildContext
-                                                                  context) =>
-                                                              CommonWidgets().registerEditDialog(
-                                                                  context:
-                                                                      context,
-                                                                  data: data,
-                                                                  label:
-                                                                      'please enter ${deviceDetailsController.systemOperationsLeading[i].leading}',
-                                                                  placeholder:
-                                                                      deviceDetailsController
-                                                                          .systemOperationsLeading[
-                                                                              i]
-                                                                          .leading,
-                                                                  type: TextInputType
-                                                                      .number,
-                                                                  register:
-                                                                      deviceDetailsController
-                                                                          .systemOperationsLeading[
-                                                                              i]
-                                                                          .reg,
-                                                                  value: values[
-                                                                      i + 6]),
-                                                        );
-                                                      },
-                                                      child: Icon(
-                                                        Icons.edit,
-                                                        color: Theme.of(context)
-                                                            .colorScheme
-                                                            .primary,
-                                                        size: 14.0,
-                                                      ),
-                                                    )
-                                                  : const SizedBox(),
-                                              const SizedBox(
-                                                width: 15.0,
-                                              ),
-                                              Obx(
-                                                () => deviceDetailsController
-                                                        .systemOperationsLeading[
-                                                            i]
-                                                        .toggleButton
-                                                    ? SizedBox(
-                                                        height: 17.0,
-                                                        width: 20.0,
-                                                        child: Transform.scale(
-                                                          scale: .7,
-                                                          child: Switch(
-                                                            value:
-                                                                values[i + 6] ==
-                                                                        'On'
-                                                                    ? true
-                                                                    : false,
-                                                            activeColor:
-                                                                Theme.of(
-                                                                        context)
-                                                                    .colorScheme
-                                                                    .primary,
-                                                            activeTrackColor:
-                                                                Theme.of(
-                                                                        context)
-                                                                    .colorScheme
-                                                                    .primary,
-                                                            onChanged: (_) => toogleSwitch(
-                                                                reg: deviceDetailsController
-                                                                    .systemOperationsLeading[
+                                          Obx(
+                                            () => deviceDetailsController
+                                                    .systemOperationsData[i]
+                                                    .toggleButton
+                                                ? SizedBox(
+                                                    height: 17.0,
+                                                    width: 20.0,
+                                                    child: Transform.scale(
+                                                      scale: .7,
+                                                      child: Switch(
+                                                        value: deviceDetailsController
+                                                                    .systemOperationsData[
                                                                         i]
-                                                                    .reg,
-                                                                bit: deviceDetailsController
-                                                                    .systemOperationsLeading[
-                                                                        i]
-                                                                    .bit),
-                                                          ),
-                                                        ),
-                                                      )
-                                                    : CommonWidgets().text(
-                                                        text: values[i + 6] ??
-                                                            '--',
-                                                        size: 13.0,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        textColor: const Color
-                                                                .fromRGBO(
-                                                            88, 89, 91, 1),
-                                                        fontFamily: 'karbon',
+                                                                    .trailing ==
+                                                                'On'
+                                                            ? true
+                                                            : false,
+                                                        activeColor:
+                                                            Theme.of(context)
+                                                                .colorScheme
+                                                                .primary,
+                                                        activeTrackColor:
+                                                            Theme.of(context)
+                                                                .colorScheme
+                                                                .primary,
+                                                        onChanged: (_) => toogleSwitch(
+                                                            reg: deviceDetailsController
+                                                                .systemOperationsData[
+                                                                    i]
+                                                                .reg,
+                                                            bit: deviceDetailsController
+                                                                .systemOperationsData[
+                                                                    i]
+                                                                .bit),
                                                       ),
-                                              ),
-                                            ],
+                                                    ),
+                                                  )
+                                                : CommonWidgets().text(
+                                                    deviceDetailsController
+                                                        .systemOperationsData[i]
+                                                        .trailing,
+                                                    14.0,
+                                                    FontWeight.w600,
+                                                    TextAlign.center,
+                                                    const Color.fromRGBO(
+                                                        88, 89, 91, 1),
+                                                    'karbon'),
                                           ),
                                         ],
-                                      );
-                                    },
+                                      ),
+                                    ],
                                   );
                                 },
                               ),
@@ -557,10 +562,7 @@ class _SystemOperationsState extends State<SystemOperations> {
     );
   }
 
-  changeOperationMode({
-    reg,
-    selectedValue,
-  }) async {
+  changeOperationMode({reg, selectedValue}) async {
     var val;
     if (selectedValue == 'Off') {
       val = 0;
@@ -583,10 +585,7 @@ class _SystemOperationsState extends State<SystemOperations> {
     );
   }
 
-  toogleSwitch({
-    reg,
-    bit,
-  }) async {
+  toogleSwitch({reg, bit}) async {
     var val;
     if (bit == 4) {
       val = 16;

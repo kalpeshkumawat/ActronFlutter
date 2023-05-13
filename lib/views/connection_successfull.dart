@@ -1,18 +1,23 @@
 import 'package:airlink/common/common_widgets.dart';
 import 'package:airlink/controllers/ble_controller.dart';
+import 'package:airlink/controllers/packet_frame_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:location/location.dart';
+
 import 'deviceScreen/device_details.dart';
 
 class ConnectionSuccessfull extends StatefulWidget {
   const ConnectionSuccessfull({Key? key}) : super(key: key);
+
   @override
   State<ConnectionSuccessfull> createState() => _ConnectionSuccessfullState();
 }
 
 class _ConnectionSuccessfullState extends State<ConnectionSuccessfull> {
   final bleController = Get.find<BleController>(tag: 'bleController');
+  final packetFrameController =
+      Get.find<PacketFrameController>(tag: 'packetFrameController');
   Location location = Location();
 
   @override
@@ -26,12 +31,12 @@ class _ConnectionSuccessfullState extends State<ConnectionSuccessfull> {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 50.0),
                 child: CommonWidgets().text(
-                  text: 'Pairing Succesful',
-                  size: 32.0,
-                  fontWeight: FontWeight.bold,
-                  textColor: const Color.fromRGBO(65, 64, 66, 1),
-                  fontFamily: 'Inter',
-                ),
+                    'Pairing Succesful',
+                    32.0,
+                    FontWeight.bold,
+                    TextAlign.center,
+                    const Color.fromRGBO(65, 64, 66, 1),
+                    'Inter'),
               ),
               Image.asset('assets/checked.png'),
               Padding(
@@ -41,8 +46,11 @@ class _ConnectionSuccessfullState extends State<ConnectionSuccessfull> {
                     function: () {
                       bleController.connectedDevice!
                           .requestMtu(256)
-                          .whenComplete(() async {});
-
+                          .whenComplete(() async {
+                        var mtuSize =
+                            await bleController.connectedDevice!.mtu.first;
+                        debugPrint('mtu size is $mtuSize');
+                      });
                       Future.delayed(const Duration(milliseconds: 200), () {
                         Get.to(
                           () => const DeviceDeatails(),

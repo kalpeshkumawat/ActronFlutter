@@ -1,19 +1,11 @@
 import 'package:airlink/common/common_widgets.dart';
 import 'package:airlink/controllers/ble_controller.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+
 import '../controllers/packet_frame_controller.dart';
 
 class PacketFrameService {
-  static final PacketFrameService _packetFrameService =
-      PacketFrameService._internal();
-
-  factory PacketFrameService() {
-    return _packetFrameService;
-  }
-
-  PacketFrameService._internal();
   final packetFrameController =
       Get.find<PacketFrameController>(tag: 'packetFrameController');
   final bleController = Get.find<BleController>(tag: 'bleController');
@@ -318,7 +310,7 @@ class PacketFrameService {
     //     'values:   ${packetFrameController.crcOne}, ${packetFrameController.crcTwo}');
   }
 
-  clearPacketData() {
+  clearAllData() {
     packetFrameController.packetData.clear();
     packetFrameController.finalPacketData.clear();
     packetFrameController.crcOne = 0;
@@ -326,7 +318,7 @@ class PacketFrameService {
   }
 
   finalPacket(data, subOpCode) async {
-    clearPacketData();
+    clearAllData();
     packetFrameController.finalPacketData
         .add(packetFrameController.sof); //start
     packetFrameController.finalPacketData.add(0x00); //length
@@ -360,13 +352,13 @@ class PacketFrameService {
     }
     debugPrint('packet sent is $printstring ');
     try {
-      await bleController.writeCharacteristics!
+      bleController.writeCharacteristics!
           .write(packetFrameController.finalPacketData, withoutResponse: true);
-    } on PlatformException catch (e) {
+    } catch (e) {
       debugPrint('error is $e');
       CommonWidgets().errorSnackbar(
         title: '',
-        message: 'Something went wrong please connect again.',
+        message: e.toString(),
       );
     }
   }

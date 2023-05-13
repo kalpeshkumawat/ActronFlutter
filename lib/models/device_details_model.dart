@@ -11,22 +11,16 @@ class DeviceDetailsModel {
     required this.id,
     required this.model,
     required this.serial,
-    required this.iduVersion,
-    required this.oduVersion,
     required this.type,
-    required this.comissionedDate,
-    required this.lastUpdatedDate,
+    required this.date,
   });
 
   String name;
   String id;
   String model;
   String serial;
-  String iduVersion;
-  String oduVersion;
-  int type;
-  String comissionedDate;
-  String lastUpdatedDate;
+  String type;
+  String date;
 
   factory DeviceDetailsModel.fromJson(Map<String, dynamic> json) =>
       DeviceDetailsModel(
@@ -34,11 +28,8 @@ class DeviceDetailsModel {
         id: json["id"],
         model: json["model"],
         serial: json["serial"],
-        iduVersion: json["iduVersion"],
-        oduVersion: json["oduVersion"],
         type: json["type"],
-        comissionedDate: json["comissionedDate"],
-        lastUpdatedDate: json["lastUpdatedDate"],
+        date: json["date"],
       );
 
   Map<String, dynamic> toJson() => {
@@ -46,10 +37,7 @@ class DeviceDetailsModel {
         "id": id,
         "model": model,
         "serial": serial,
-        "iduVersion": iduVersion,
-        "oduVersion": oduVersion,
         "type": type,
-        "comissionedDate": comissionedDate,
-        "lastUpdatedDate": lastUpdatedDate
+        "date": date,
       };
 }

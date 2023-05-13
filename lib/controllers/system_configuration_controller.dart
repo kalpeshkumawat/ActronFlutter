@@ -10,7 +10,10 @@ import 'device_details_controller.dart';
 
 class SystemConfigurationController extends GetxController {
   final deviceDetailsController =
-      Get.find<DeviceDetailsController>(tag: 'deviceDetailsController');
+      Get.put(DeviceDetailsController(), tag: 'deviceDetailsController');
+  bool isBasicBmsChecked = false;
+  bool isWallBmsChecked = false;
+  bool isAdvancedBmsChecked = false;
   final bleController = Get.find<BleController>(tag: 'bleController');
   final lowPwm = TextEditingController().obs;
   final medPwm = TextEditingController().obs;
@@ -40,13 +43,8 @@ class SystemConfigurationController extends GetxController {
             itemCount: list.length,
             itemBuilder: (BuildContext context, int index) {
               return ListTile(
-                leading: CommonWidgets().text(
-                  text: list[index],
-                  size: 14.0,
-                  fontWeight: FontWeight.w500,
-                  textColor: Colors.black,
-                  fontFamily: 'Karbon',
-                ),
+                leading: CommonWidgets().text(list[index], 14.0,
+                    FontWeight.w500, TextAlign.start, Colors.black, 'Karbon'),
                 trailing: Checkbox(
                   shape: const CircleBorder(),
                   value: controlModeSelectedValue == index,
@@ -68,13 +66,8 @@ class SystemConfigurationController extends GetxController {
   Widget operationSettings() {
     return Column(
       children: [
-        CommonWidgets().text(
-          text: 'Indoor Settings',
-          size: heading,
-          fontWeight: FontWeight.w600,
-          textColor: Colors.black,
-          fontFamily: 'Karbon',
-        ),
+        CommonWidgets().text('Indoor Settings', heading, FontWeight.w600,
+            TextAlign.start, Colors.black, 'Karbon'),
         const SizedBox(
           height: 15.0,
         ),
@@ -118,13 +111,8 @@ class SystemConfigurationController extends GetxController {
             'value': deviceDetailsController.iduVersion.value
           },
         ], sizedBoxHeight: 160.0),
-        CommonWidgets().text(
-          text: 'Warranty Registration',
-          size: heading,
-          fontWeight: FontWeight.w600,
-          textColor: Colors.black,
-          fontFamily: 'Karbon',
-        ),
+        CommonWidgets().text('Warranty Registration', heading, FontWeight.w600,
+            TextAlign.start, Colors.black, 'Karbon'),
         const SizedBox(
           height: 15.0,
         ),
@@ -145,15 +133,11 @@ class SystemConfigurationController extends GetxController {
         ElevatedButton(
           onPressed: () {
             if (installer.value.text != '') {
-              sendEmail(
-                  emailType: 'Registration',
-                  body:
-                      '''
+              sendEmail('Registration', '''
           This e-mail contains the system information for ${deviceDetailsController.model}: ${deviceDetailsController.serial}   
           Registered by ${installer.value.text}
           Location is ${bleController.currentAddress.value}
-          ''',
-                  recipient: 'actronLink@actronair.com');
+          ''');
             } else {
               CommonWidgets().errorSnackbar(
                   title: '', message: 'Installer name can\'t be empty');
@@ -173,14 +157,15 @@ class SystemConfigurationController extends GetxController {
     );
   }
 
-  sendEmail({emailType, body, recipient}) async {
+  sendEmail(emailType, body) async {
     var file = await ImportExportService().readFile();
+    // SharedPreferences prefs = getSharedPreferences("");
     debugPrint('file is $file');
     final Email email = Email(
       body: body,
       subject:
           '${deviceDetailsController.model}: ${deviceDetailsController.serial} $emailType $date',
-      recipients: [recipient],
+      recipients: ['actronLink@actronair.com'],
       attachmentPaths: [file],
       isHTML: false,
     );
@@ -193,24 +178,20 @@ class SystemConfigurationController extends GetxController {
       height: MediaQuery.of(context).size.height * .5,
       child: ListView.builder(
         scrollDirection: Axis.vertical,
-        itemCount: deviceDetailsController.economiserLeading.length,
+        itemCount: deviceDetailsController.economiserSettings.length,
         itemBuilder: (contex, i) {
-          var values = deviceDetailsController.economiserSettings.value
-              .toJson()
-              .values
-              .toList();
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 CommonWidgets().text(
-                  text: deviceDetailsController.economiserLeading[i].leading,
-                  size: 16.0,
-                  fontWeight: FontWeight.w400,
-                  textColor: Colors.black,
-                  fontFamily: 'Karbon',
-                ),
+                    deviceDetailsController.economiserSettings[i].leading,
+                    17.0,
+                    FontWeight.w400,
+                    TextAlign.start,
+                    Colors.black,
+                    'Karbon'),
                 Row(
                   children: [
                     GestureDetector(
@@ -226,27 +207,27 @@ class SystemConfigurationController extends GetxController {
                               CommonWidgets().registerEditDialog(
                             context: context,
                             data: economiserData,
-                            label: deviceDetailsController
-                                .economiserLeading[i].leading,
+                            label:
+                                'please enter ${deviceDetailsController.economiserSettings[i].leading}',
                             placeholder: deviceDetailsController
-                                .economiserLeading[i].leading,
-                            type: TextInputType.number,
+                                .economiserSettings[i].leading,
+                            type: const TextInputType.numberWithOptions(decimal: true, signed: false),
                             register: deviceDetailsController
-                                .economiserLeading[i].reg,
+                                .economiserSettings[i].reg,
                           ),
                         );
                       },
                     ),
                     const SizedBox(width: 10.0),
                     CommonWidgets().text(
-                      text: values[i] ?? '--',
-                      size: 16.0,
-                      fontWeight: FontWeight.w600,
-                      textColor: Colors.black,
-                      fontFamily: 'Karbon',
-                    ),
+                        deviceDetailsController.economiserSettings[i].trailing,
+                        14.0,
+                        FontWeight.w400,
+                        TextAlign.start,
+                        Colors.black,
+                        'Karbon'),
                   ],
-                ),
+                )
               ],
             ),
           );

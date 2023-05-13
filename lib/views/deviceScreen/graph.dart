@@ -1,13 +1,14 @@
 import 'dart:async';
+import 'dart:math';
+
 import 'package:airlink/common/common_widgets.dart';
 import 'package:airlink/controllers/packet_frame_controller.dart';
-import 'package:airlink/models/chart_data_model.dart';
-import 'package:airlink/services/device_details_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
+
 import '../../controllers/ble_controller.dart';
 import '../../controllers/device_details_controller.dart';
 import '../../services/ble_service.dart';
@@ -25,13 +26,18 @@ class _GraphState extends State<Graph> {
   final deviceDetailsController =
       Get.find<DeviceDetailsController>(tag: 'deviceDetailsController');
   final bleController = Get.find<BleController>(tag: 'bleController');
-  late TooltipBehavior _tooltipBehavior;
-
-  late ChartSeriesController _chartSeriesController;
-  late ZoomPanBehavior _zoomPanBehavior;
-  bool isPause = false;
-  Stream? myStream;
-  StreamSubscription? myStreamSubscription;
+  bool play = true;
+  List<Map<String, dynamic>> listOfBoxes = [
+    {'colorOfBox': const Color(0xFFb76e6e), 'data': 'HP Pressure'},
+    {'colorOfBox': const Color(0xFF7171b8), 'data': 'LP Pressure'},
+    {'colorOfBox': Colors.green, 'data': 'Coil Temp'},
+    {'colorOfBox': Colors.red, 'data': 'DLT Temp'},
+    {'colorOfBox': const Color(0xFF6161ff), 'data': 'SCT Temp'},
+    {'colorOfBox': const Color(0xFFff42ff), 'data': 'Superheat'},
+    {'colorOfBox': Colors.cyan, 'data': 'Comp Speed'},
+    {'colorOfBox': const Color(0xFFb9b975), 'data': 'EXV Opening'},
+  ];
+  Timer? timer;
   TransformationController? viewTransformationController;
 
   @override
@@ -40,28 +46,24 @@ class _GraphState extends State<Graph> {
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
     ]);
-    _tooltipBehavior = TooltipBehavior(enable: true);
-    _zoomPanBehavior = ZoomPanBehavior(enablePinching: true);
-    DeviceDetailsService().managingPages(pageNumber: 5);
-    if (bleController.connectedDevice != null) {
-      myStream = Stream.periodic(
-        const Duration(seconds: 5),
-        (value) {
-          BleService().sendPackets(150, packetFrameController.graphData);
-          if (mounted) {
-            setState(() {});
-          }
-        },
-      );
-      myStreamSubscription = myStream!.listen((event) {});
-    }
-    clearGraph();
+    deviceDetailsController.deviceDetailsPage.value = false;
+    deviceDetailsController.operationsTillHpPressure.value = false;
+    deviceDetailsController.operationsTillVsdMotor.value = false;
+    deviceDetailsController.errorsCodesRegistry.value = false;
+    deviceDetailsController.errorsDatesRegistry.value = false;
+    deviceDetailsController.errorsTimesRegistry.value = false;
+    deviceDetailsController.economiserSettingPage.value = false;
+    deviceDetailsController.graphPage.value = true;
+    deviceDetailsController.advancedSearchPage.value = false;
+    playPauseTimer();
+    // clearGraph();
     viewTransformationController = TransformationController();
+    viewTransformationController!.value = Matrix4.identity() * 0.8;
     super.initState();
   }
 
   clearGraph() {
-    Timer.periodic(const Duration(minutes: 5), (timer) {
+    Timer.periodic(const Duration(minutes: 1), (timer) {
       clearGraphData();
     });
   }
@@ -75,11 +77,19 @@ class _GraphState extends State<Graph> {
     deviceDetailsController.hpPressureGraphData.clear();
     deviceDetailsController.lpPressureGraphData.clear();
     deviceDetailsController.compSpeedGraphData.clear();
-    deviceDetailsController.wholeChartData.clear();
+  }
+
+  fetchGraphData() async {
+    if (bleController.connectedDevice != null) {
+      timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        BleService().sendPackets(150, packetFrameController.graphData);
+      });
+    }
   }
 
   playPauseTimer() {
-    isPause ? myStreamSubscription!.pause() : myStreamSubscription!.resume();
+    debugPrint('timer is ${timer.toString()}');
+    play ? fetchGraphData() : timer!.cancel();
   }
 
   restartGraph() {
@@ -93,11 +103,15 @@ class _GraphState extends State<Graph> {
     ]);
     clearGraphData();
     deviceDetailsController.graphPage.value = false;
+    timer!.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    int max = 10;
+    Random rnd = Random();
+
     return SafeArea(
       child: Scaffold(
         appBar: AppBar(
@@ -122,178 +136,374 @@ class _GraphState extends State<Graph> {
         ),
         body: OrientationBuilder(
           builder: (context, orientation) {
-            return Scrollbar(
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height,
-                child: Column(
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10.0),
-                          width: MediaQuery.of(context).size.width,
-                          height: MediaQuery.of(context).size.height * .6,
-                          child: SfCartesianChart(
-                            legend: Legend(isVisible: true),
-                            zoomPanBehavior: ZoomPanBehavior(
-                                enableDoubleTapZooming: true,
-                                enablePanning: true,
-                                enablePinching: true,
-                                enableSelectionZooming: true),
-                            tooltipBehavior: _tooltipBehavior,
-                            primaryXAxis: CategoryAxis(),
-                            series: <LineSeries<ChartData, int>>[
-                              LineSeries<ChartData, int>(
-                                onRendererCreated:
-                                    (ChartSeriesController controller) {
-                                  _chartSeriesController = controller;
-                                },
-                                enableTooltip: true,
-                                name: 'Comp speed graphdata',
-                                dataSource:
-                                    deviceDetailsController.wholeChartData,
-                                color: const Color.fromRGBO(192, 108, 132, 1),
-                                xValueMapper: (ChartData data, _) => data.index,
-                                yValueMapper: (ChartData data, _) =>
-                                    data.compSpeedGraphData,
+            return Row(
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                Flexible(
+                  flex: 82,
+                  child: Container(
+                    alignment: Alignment.center,
+                    child: Obx(
+                      () => Column(
+                        children: [
+                          SizedBox(
+                            height:
+                                MediaQuery.of(context).size.shortestSide < 600
+                                    ? MediaQuery.of(context).size.height * .75
+                                    : 275,
+                            child: SfCartesianChart(
+                                primaryXAxis: CategoryAxis(),
+                                series: <ChartSeries>[
+                                  StackedLineSeries<ChartData, double>(
+                                      groupName: 'Group A',
+                                      color: const Color(0xFFb76e6e),
+                                      dataLabelSettings:
+                                          const DataLabelSettings(
+                                              isVisible: true,
+                                              useSeriesColor: true),
+                                      dataSource: deviceDetailsController
+                                          .hpPressureGraphData
+                                          .asMap()
+                                          .entries
+                                          .map((e) {
+                                        return ChartData(
+                                            e.key.toDouble(), e.value / 500);
+                                      }).toList(),
+                                      xValueMapper: (ChartData data, _) => data.x,
+                                      yValueMapper: (ChartData data, _) => data.y),
+                                  StackedLineSeries<ChartData, double>(
+                                      groupName: 'Group B',
+                                      color: const Color(0xFF7171b8),
+                                      dataLabelSettings:
+                                          const DataLabelSettings(
+                                              isVisible: true,
+                                              useSeriesColor: true),
+                                      dataSource: deviceDetailsController
+                                          .lpPressureGraphData
+                                          .asMap()
+                                          .entries
+                                          .map((e) {
+                                        return ChartData(
+                                            e.key.toDouble(), e.value / 500);
+                                      }).toList(),
+                                      xValueMapper: (ChartData data, _) => data.x,
+                                      yValueMapper: (ChartData data, _) => data.y),
+                                  StackedLineSeries<ChartData, double>(
+                                      groupName: 'Group C',
+                                      color: Colors.green,
+                                      dataLabelSettings:
+                                          const DataLabelSettings(
+                                              isVisible: true,
+                                              useSeriesColor: true),
+                                      dataSource: deviceDetailsController
+                                          .coilTempGraphData
+                                          .asMap()
+                                          .entries
+                                          .map((e) {
+                                        return ChartData(
+                                            e.key.toDouble(), e.value / 10);
+                                      }).toList(),
+                                      xValueMapper: (ChartData data, _) => data.x,
+                                      yValueMapper: (ChartData data, _) => data.y),
+                                  StackedLineSeries<ChartData, double>(
+                                      groupName: 'Group D',
+                                      color: Colors.red,
+                                      dataLabelSettings:
+                                          const DataLabelSettings(
+                                              isVisible: true,
+                                              useSeriesColor: true),
+                                      dataSource: deviceDetailsController
+                                          .dltTempGraphData
+                                          .asMap()
+                                          .entries
+                                          .map((e) {
+                                        return ChartData(
+                                            e.key.toDouble(), e.value / 10);
+                                      }).toList(),
+                                      xValueMapper: (ChartData data, _) => data.x,
+                                      yValueMapper: (ChartData data, _) => data.y),
+                                  StackedLineSeries<ChartData, double>(
+                                      groupName: 'Group E',
+                                      color: const Color(0xFF6161ff),
+                                      dataLabelSettings:
+                                          const DataLabelSettings(
+                                              isVisible: true,
+                                              useSeriesColor: true),
+                                      dataSource: deviceDetailsController
+                                          .sctTempGraphData
+                                          .asMap()
+                                          .entries
+                                          .map((e) {
+                                        return ChartData(
+                                            e.key.toDouble(), e.value / 10);
+                                      }).toList(),
+                                      xValueMapper: (ChartData data, _) => data.x,
+                                      yValueMapper: (ChartData data, _) => data.y),
+                                  StackedLineSeries<ChartData, double>(
+                                      groupName: 'Group F',
+                                      color: const Color(0xFFff42ff),
+                                      dataLabelSettings:
+                                          const DataLabelSettings(
+                                              isVisible: true,
+                                              useSeriesColor: true),
+                                      dataSource: deviceDetailsController
+                                          .superheatGraphData
+                                          .asMap()
+                                          .entries
+                                          .map((e) {
+                                        return ChartData(
+                                            e.key.toDouble(), e.value / 10);
+                                      }).toList(),
+                                      xValueMapper: (ChartData data, _) => data.x,
+                                      yValueMapper: (ChartData data, _) => data.y),
+                                  StackedLineSeries<ChartData, double>(
+                                      groupName: 'Group G',
+                                      color: Colors.cyan,
+                                      dataLabelSettings:
+                                          const DataLabelSettings(
+                                              isVisible: true,
+                                              useSeriesColor: true),
+                                      dataSource: deviceDetailsController
+                                          .compSpeedGraphData
+                                          .asMap()
+                                          .entries
+                                          .map((e) {
+                                        return ChartData(
+                                            e.key.toDouble(), e.value);
+                                      }).toList(),
+                                      xValueMapper: (ChartData data, _) => data.x,
+                                      yValueMapper: (ChartData data, _) => data.y),
+                                  StackedLineSeries<ChartData, double>(
+                                      groupName: 'Group H',
+                                      color: const Color(0xFFb9b975),
+                                      dataLabelSettings:
+                                          const DataLabelSettings(
+                                              isVisible: true,
+                                              useSeriesColor: true),
+                                      dataSource: deviceDetailsController
+                                          .exvOpeningGraphData
+                                          .asMap()
+                                          .entries
+                                          .map((e) {
+                                            debugPrint("${e.key.toDouble()} ${e.value / 5}");
+                                        return ChartData(
+                                            e.key.toDouble(), e.value / 5);
+                                      }).toList(),
+                                      xValueMapper: (ChartData data, _) => data.x,
+                                      yValueMapper: (ChartData data, _) => data.y),
+                                ]),
+                          ),
+/*
+                          SizedBox(
+                            width: MediaQuery.of(context).size.width * .78,
+                            child: AspectRatio(
+                              aspectRatio: 4,
+                              child: LineChart(
+                                LineChartData(
+                                  lineBarsData: [
+                                    LineChartBarData(
+                                        spots: deviceDetailsController
+                                            .coilTempGraphData
+                                            .asMap()
+                                            .entries
+                                            .map((e) {
+                                          return ChartData(
+                                              e.key.toDouble(), e.value);
+                                        }).toList(),
+                                        isCurved: true,
+                                        color: Colors.red),
+                                    LineChartBarData(
+                                        spots: deviceDetailsController
+                                            .dltTempGraphData
+                                            .asMap()
+                                            .entries
+                                            .map((e) {
+                                          return ChartData(
+                                              e.key.toDouble(), e.value);
+                                        }).toList(),
+                                        isCurved: true,
+                                        color: Colors.purple),
+                                    LineChartBarData(
+                                        spots: deviceDetailsController
+                                            .sctTempGraphData
+                                            .asMap()
+                                            .entries
+                                            .map((e) {
+                                          return ChartData(
+                                              e.key.toDouble(), e.value);
+                                        }).toList(),
+                                        isCurved: true,
+                                        color: Colors.green),
+                                    LineChartBarData(
+                                        spots: deviceDetailsController
+                                            .superheatGraphData
+                                            .asMap()
+                                            .entries
+                                            .map((e) {
+                                          return ChartData(
+                                              e.key.toDouble(), e.value);
+                                        }).toList(),
+                                        isCurved: true,
+                                        color: Colors.black),
+                                    LineChartBarData(
+                                        spots: deviceDetailsController
+                                            .exvOpeningGraphData
+                                            .asMap()
+                                            .entries
+                                            .map((e) {
+                                          return ChartData(
+                                              e.key.toDouble(), e.value);
+                                        }).toList(),
+                                        isCurved: true,
+                                        color: Colors.amber),
+                                    LineChartBarData(
+                                        spots: deviceDetailsController
+                                            .compSpeedGraphData
+                                            .asMap()
+                                            .entries
+                                            .map((e) {
+                                          return ChartData(
+                                              e.key.toDouble(), e.value);
+                                        }).toList(),
+                                        isCurved: true,
+                                        color: Colors.grey),
+                                    LineChartBarData(
+                                        spots: deviceDetailsController
+                                            .hpPressureGraphData
+                                            .asMap()
+                                            .entries
+                                            .map((e) {
+                                          return ChartData(
+                                              e.key.toDouble(), e.value);
+                                        }).toList(),
+                                        isCurved: true,
+                                        color: Colors.orange),
+                                    LineChartBarData(
+                                        spots: deviceDetailsController
+                                            .lpPressureGraphData
+                                            .asMap()
+                                            .entries
+                                            .map((e) {
+                                          return ChartData(
+                                              e.key.toDouble(), e.value);
+                                        }).toList(),
+                                        isCurved: true,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .primary),
+                                  ],
+                                  titlesData: FlTitlesData(
+                                    rightTitles: AxisTitles(
+                                      sideTitles: SideTitles(
+                                        showTitles: false,
+                                      ),
+                                    ),
+                                    topTitles: AxisTitles(
+                                      sideTitles: SideTitles(
+                                        showTitles: false,
+                                      ),
+                                    ),
+                                    bottomTitles: AxisTitles(
+                                      sideTitles:
+                                          SideTitles(showTitles: false),
+                                    ),
+                                  ),
+                                  borderData: FlBorderData(
+                                    border: const Border(
+                                      top: BorderSide(
+                                        width: 0,
+                                      ),
+                                      right: BorderSide(
+                                        width: 0,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                swapAnimationCurve: Curves.linear,
                               ),
-                              LineSeries<ChartData, int>(
-                                onRendererCreated:
-                                    (ChartSeriesController controller) {
-                                  _chartSeriesController = controller;
+                            ),
+                          ),
+*/
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Flexible(
+                  flex: 18,
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: SizedBox(
+                          height: MediaQuery.of(context).size.shortestSide < 600
+                              ? MediaQuery.of(context).size.height * .65
+                              : 275,
+                          child: ListView.builder(
+                            itemCount: listOfBoxes.length,
+                            itemBuilder: (BuildContext context, i) {
+                              return GestureDetector(
+                                onTap: () {
+                                  debugPrint('tapped');
                                 },
-                                enableTooltip: true,
-                                name: 'Coil temp graphdata',
-                                dataSource:
-                                    deviceDetailsController.wholeChartData,
-                                color: const Color.fromARGB(255, 163, 4, 49),
-                                xValueMapper: (ChartData data, _) => data.index,
-                                yValueMapper: (ChartData data, _) =>
-                                    data.coilTempGraphData,
-                              ),
-                              LineSeries<ChartData, int>(
-                                onRendererCreated:
-                                    (ChartSeriesController controller) {
-                                  _chartSeriesController = controller;
-                                },
-                                enableTooltip: true,
-                                name: 'Dlt temp graphdata',
-                                dataSource:
-                                    deviceDetailsController.wholeChartData,
-                                color: const Color.fromARGB(255, 7, 192, 84),
-                                xValueMapper: (ChartData data, _) => data.index,
-                                yValueMapper: (ChartData data, _) =>
-                                    data.dltTempGraphData,
-                              ),
-                              LineSeries<ChartData, int>(
-                                onRendererCreated:
-                                    (ChartSeriesController controller) {
-                                  _chartSeriesController = controller;
-                                },
-                                enableTooltip: true,
-                                name: 'Sct temp graphdata',
-                                dataSource:
-                                    deviceDetailsController.wholeChartData,
-                                color: const Color.fromARGB(255, 4, 39, 155),
-                                xValueMapper: (ChartData data, _) => data.index,
-                                yValueMapper: (ChartData data, _) =>
-                                    data.sctTempGraphData,
-                              ),
-                              LineSeries<ChartData, int>(
-                                onRendererCreated:
-                                    (ChartSeriesController controller) {
-                                  _chartSeriesController = controller;
-                                },
-                                enableTooltip: true,
-                                name: 'Super heat graphdata',
-                                dataSource:
-                                    deviceDetailsController.wholeChartData,
-                                color: const Color.fromARGB(255, 207, 8, 131),
-                                xValueMapper: (ChartData data, _) => data.index,
-                                yValueMapper: (ChartData data, _) =>
-                                    data.superheatGraphData,
-                              ),
-                              LineSeries<ChartData, int>(
-                                onRendererCreated:
-                                    (ChartSeriesController controller) {
-                                  _chartSeriesController = controller;
-                                },
-                                enableTooltip: true,
-                                name: 'Exv opening graphdata',
-                                dataSource:
-                                    deviceDetailsController.wholeChartData,
-                                color: const Color.fromARGB(255, 8, 8, 8),
-                                xValueMapper: (ChartData data, _) => data.index,
-                                yValueMapper: (ChartData data, _) =>
-                                    data.exvOpeningGraphData,
-                              ),
-                              LineSeries<ChartData, int>(
-                                onRendererCreated:
-                                    (ChartSeriesController controller) {
-                                  _chartSeriesController = controller;
-                                },
-                                enableTooltip: true,
-                                name: 'Hp pressure graphdata',
-                                dataSource:
-                                    deviceDetailsController.wholeChartData,
-                                color: const Color.fromARGB(255, 196, 152, 7),
-                                xValueMapper: (ChartData data, _) => data.index,
-                                yValueMapper: (ChartData data, _) =>
-                                    data.hpPressureGraphData,
-                              ),
-                              LineSeries<ChartData, int>(
-                                onRendererCreated:
-                                    (ChartSeriesController controller) {
-                                  _chartSeriesController = controller;
-                                },
-                                enableTooltip: true,
-                                name: 'Lp pressure graphdata',
-                                dataSource:
-                                    deviceDetailsController.wholeChartData,
-                                color: const Color.fromARGB(255, 1, 88, 52),
-                                xValueMapper: (ChartData data, _) => data.index,
-                                yValueMapper: (ChartData data, _) =>
-                                    data.lpPressureGraphData,
-                              ),
-                            ],
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      color: listOfBoxes[i]['colorOfBox'],
+                                      width: 30.0,
+                                      height: 10.0,
+                                    ),
+                                    const SizedBox(
+                                      width: 5,
+                                    ),
+                                    CommonWidgets().text(
+                                      listOfBoxes[i]['data'],
+                                      14.0,
+                                      FontWeight.w400,
+                                      TextAlign.start,
+                                      Colors.black,
+                                      'Karbon',
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           ),
                         ),
-                      ],
-                    ),
-                    Center(
-                      child: SizedBox(
-                        width: MediaQuery.of(context).size.width * .3,
+                      ),
+                      Container(
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             GestureDetector(
                               onTap: () {
                                 restartGraph();
                                 setState(() {});
                               },
-                              child: const Icon(
-                                Icons.refresh,
-                                color: Colors.black,
-                                size: 30.0,
+                              child: const Padding(
+                                padding: EdgeInsets.only(right: 40.0),
+                                child: Icon(
+                                  Icons.refresh,
+                                  color: Colors.black,
+                                  size: 30.0,
+                                ),
                               ),
                             ),
                             GestureDetector(
                               onTap: () {
-                                isPause = !isPause;
+                                play = !play;
                                 setState(
                                   () => {},
                                 );
                                 playPauseTimer();
                               },
-                              child: isPause
+                              child: play
                                   ? const Icon(
-                                      Icons.play_circle,
+                                      Icons.pause_circle,
                                       color: Colors.black,
                                       size: 30.0,
                                     )
                                   : const Icon(
-                                      Icons.pause_circle,
+                                      Icons.play_arrow,
                                       color: Colors.black,
                                       size: 30.0,
                                     ),
@@ -301,15 +511,19 @@ class _GraphState extends State<Graph> {
                           ],
                         ),
                       ),
-                    )
-                  ],
+                    ],
+                  ),
                 ),
-                // ),
-              ),
+              ],
             );
           },
         ),
       ),
     );
   }
+}
+class ChartData {
+  ChartData(this.x, this.y);
+  final double x;
+  final double y;
 }

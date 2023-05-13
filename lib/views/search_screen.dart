@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math';
 import 'package:airlink/common/common_widgets.dart';
 import 'package:airlink/controllers/ble_controller.dart';
-import 'package:airlink/controllers/home_controller.dart';
 import 'package:airlink/services/ble_service.dart';
 import 'package:airlink/views/devices.dart';
 import 'package:airlink/views/devices_found.dart';
@@ -58,7 +57,6 @@ class SearchScreenState extends State<SearchScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   final bleController = Get.find<BleController>(tag: 'bleController');
-  final homeController = Get.find<HomeController>(tag: 'homeController');
   var timer;
   @override
   void initState() {
@@ -85,13 +83,14 @@ class SearchScreenState extends State<SearchScreen>
 
   fun() async {
     await BleService().scanDevice();
-    homeController.isScanCanceled.value
-        ? Get.to(
-            () => const Devices(),
-          )
-        : Get.to(
-            () => const DevicesFound(),
-          );
+    timer = Timer(
+      const Duration(seconds: 5),
+      () {
+        Get.to(
+          () => const DevicesFound(),
+        );
+      },
+    );
   }
 
   @override
@@ -103,84 +102,68 @@ class SearchScreenState extends State<SearchScreen>
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        Get.to(() => const Devices());
-        return false;
-      },
-      child: SafeArea(
-        child: Scaffold(
-          backgroundColor: Colors.white,
-          body: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                CommonWidgets().text(
-                  text: 'Searching for devices...',
-                  size: 32.0,
-                  fontWeight: FontWeight.bold,
-                  textColor: Colors.black,
-                  fontFamily: 'Inter',
-                ),
-                CustomPaint(
-                  painter: SpritePainter(_controller),
-                  child: SizedBox(
-                    width: 300.0,
-                    height: 300.0,
-                    child: Center(
-                      child: Container(
-                        width: 150.0,
-                        height: 150.0,
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.all(
-                            Radius.circular(100.0),
-                          ),
+    return SafeArea(
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              CommonWidgets().text('Searching for devices...', 32.0,
+                  FontWeight.bold, TextAlign.center, Colors.black, 'Inter'),
+              CustomPaint(
+                painter: SpritePainter(_controller),
+                child: SizedBox(
+                  width: 300.0,
+                  height: 300.0,
+                  child: Center(
+                    child: Container(
+                      width: 150.0,
+                      height: 150.0,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.all(
+                          Radius.circular(100.0),
                         ),
-                        child: Center(
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 0.0),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                CommonWidgets().text(
-                                  text: 'Actron',
-                                  size: 28.0,
-                                  fontWeight: FontWeight.w400,
-                                  textColor: Colors.black,
-                                  fontFamily: 'Karbon',
-                                ),
-                                CommonWidgets().text(
-                                  text: 'Link',
-                                  size: 28.0,
-                                  fontWeight: FontWeight.w600,
-                                  textColor: Colors.black,
-                                  fontFamily: 'Karbon',
-                                ),
-                              ],
-                            ),
+                      ),
+                      child: Center(
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 12.0),
+                          child: Row(
+                            children: [
+                              CommonWidgets().text(
+                                  'Actron',
+                                  28.0,
+                                  FontWeight.w400,
+                                  TextAlign.center,
+                                  Colors.black,
+                                  'Karbon'),
+                              CommonWidgets().text(
+                                  'Link',
+                                  28.0,
+                                  FontWeight.w600,
+                                  TextAlign.center,
+                                  Colors.black,
+                                  'Karbon'),
+                            ],
                           ),
                         ),
                       ),
                     ),
                   ),
                 ),
-                CommonWidgets().richText(
-                    name: 'Cancel',
-                    color: Colors.black,
-                    function: () async {
-                      print('canceled');
-                      homeController.isScanCanceled.value = true;
-                      Get.to(
-                        () => const Devices(),
-                      );
-                      Future.delayed(const Duration(seconds: 3), () {
-                        homeController.isScanCanceled.value = false;
-                      });
-                    },
-                    size: 18.0),
-              ],
-            ),
+              ),
+              CommonWidgets().richText(
+                  name: 'Cancel',
+                  color: Colors.black,
+                  function: () async {
+                    timer.cancel();
+                    Get.to(
+                      () => const Devices(),
+                    );
+                  },
+                  size: 18.0),
+            ],
           ),
         ),
       ),

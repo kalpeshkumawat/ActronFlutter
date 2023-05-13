@@ -1,3 +1,0 @@
-alias name - actron
-
-password - 123456

@@ -1,25 +1,24 @@
+import 'dart:async';
+
 import 'package:airlink/common/common_widgets.dart';
 import 'package:airlink/controllers/ble_controller.dart';
 import 'package:airlink/controllers/device_details_controller.dart';
-import 'package:airlink/controllers/home_controller.dart';
 import 'package:airlink/controllers/packet_frame_controller.dart';
 import 'package:airlink/controllers/system_configuration_controller.dart';
-import 'package:airlink/models/device_details_model.dart';
 import 'package:airlink/services/ble_service.dart';
-import 'package:airlink/services/device_db_service.dart';
-import 'package:airlink/services/device_details_service.dart';
-import 'package:airlink/views/deviceScreen/sysOpsScreen/system_operations.dart';
-import 'package:airlink/views/devices.dart';
 import 'package:airlink/views/deviceScreen/error_history.dart';
 import 'package:airlink/views/deviceScreen/graph.dart';
+import 'package:airlink/views/deviceScreen/sysOpsScreen/system_operations.dart';
 import 'package:airlink/views/deviceScreen/system_configuration.dart';
+import 'package:airlink/views/devices.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:get/get.dart';
-import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:get/get.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../services/db_service.dart';
 
 class DeviceDeatails extends StatefulWidget {
   const DeviceDeatails({Key? key}) : super(key: key);
@@ -34,35 +33,45 @@ class _DeviceDeatailsState extends State<DeviceDeatails> {
       Get.find<DeviceDetailsController>(tag: 'deviceDetailsController');
   final packetFrameController =
       Get.find<PacketFrameController>(tag: 'packetFrameController');
-  final homeController = Get.find<HomeController>(tag: 'homeController');
   final systemConfigurationController = Get.find<SystemConfigurationController>(
       tag: 'systemConfigurationController');
   final deviceName = TextEditingController();
   final httpsUri = Uri.parse('https://webstore.actronair.com.au/');
-  Position? currentPosition;
-  var date;
+  bool showLocationIcon = false;
+  bool isBluetoothOn = false;
 
   @override
   void initState() {
-    date = DateFormat.yMMMMd('en_US').format(DateTime.now());
-    var isDevicePresent = homeController.savedDevices
-        .where((element) => element.id == bleController.selectedId)
-        .isEmpty;
-    if (!isDevicePresent) {
-      deviceDetailsController.lastUpdatedDate.value = date;
-      deviceDetailsController.lastUpdatedDate.value = date;
+    bleController.selectedDevice;
+    if (deviceDetailsController.model.value == '') {
+      deviceDetailsController.deviceDetailsPage.value = true;
+      deviceDetailsController.operationsTillHpPressure.value = false;
+      deviceDetailsController.operationsTillVsdMotor.value = false;
+      deviceDetailsController.errorsCodesRegistry.value = false;
+      deviceDetailsController.errorsDatesRegistry.value = false;
+      deviceDetailsController.errorsTimesRegistry.value = false;
+      deviceDetailsController.economiserSettingPage.value = false;
+      deviceDetailsController.graphPage.value = false;
+      deviceDetailsController.advancedSearchPage.value = false;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        deviceDetailsController.model.value = '';
+        deviceDetailsController.serial.value = '';
+        deviceDetailsController.oduVersion.value = '';
+        deviceDetailsController.iduVersion.value = '';
+      });
+      if (bleController.connectedDevice != null) {
+        if (deviceDetailsController.model.value.isEmpty) {
+          BleService()
+              .sendPackets(50, packetFrameController.deviceDetailsRegisters);
+        }
+        deviceDetailsController.activeErrorsRegistry.value = true;
+        BleService().sendPackets(250, packetFrameController.activeError);
+      } else {
+        getDeviceDetailsFromLocalStorage();
+      }
     }
-    deviceDetailsController.deviceName.value.text =
-        bleController.selectedDevice!.name;
-    DeviceDetailsService().managingPages(pageNumber: 1);
-    if (bleController.connectedDevice != null) {
-      BleService()
-          .sendPackets(50, packetFrameController.deviceDetailsRegisters);
-      deviceDetailsController.activeErrorsRegistry.value = true;
-      BleService().sendPackets(250, packetFrameController.activeError);
-    } else {
-      getDeviceDetailsFromLocalStorage();
-    }
+    initLocation();
     super.initState();
   }
 
@@ -72,16 +81,32 @@ class _DeviceDeatailsState extends State<DeviceDeatails> {
     super.dispose();
   }
 
+  initLocation() async {
+    BleService().getCurrentLocation();
+    if (await BleService().isLocationServiceEnabled()) {
+      setState(() {
+        showLocationIcon = true;
+      });
+    }
+
+    Geolocator.getServiceStatusStream().listen((ServiceStatus status) {
+      setState(
+        () {
+          showLocationIcon = status == ServiceStatus.enabled ? true : false;
+          debugPrint('showLocationIcon $showLocationIcon');
+        },
+      );
+    });
+  }
+
   getDeviceDetailsFromLocalStorage() async {
-    for (DeviceDetailsModel element in homeController.savedDevices) {
-      if (element.id == bleController.selectedId) {
-        deviceDetailsController.model.value = element.model;
-        deviceDetailsController.serial.value = element.serial;
-        deviceDetailsController.iduVersion.value = element.iduVersion;
-        deviceDetailsController.oduVersion.value = element.oduVersion;
-        deviceDetailsController.commissionedDate.value =
-            element.comissionedDate;
-        deviceDetailsController.lastUpdatedDate.value = element.lastUpdatedDate;
+    for (var element in bleController.savedDevices) {
+      if (element['id'] == bleController.selectedId) {
+        deviceDetailsController.model.value = await element['model'];
+        deviceDetailsController.serial.value = await element['serial'];
+        deviceDetailsController.iduVersion.value = await element['iduVersion'];
+        deviceDetailsController.oduVersion.value = await element['oduVersion'];
+        deviceDetailsController.commissionedDate = await element['date'];
       }
     }
   }
@@ -98,6 +123,7 @@ class _DeviceDeatailsState extends State<DeviceDeatails> {
               children: [
                 const Padding(
                   padding: EdgeInsets.only(top: 6.0),
+                  // ignore: unnecessary_const
                   child: Text(
                     'Device Details',
                     textAlign: TextAlign.end,
@@ -107,74 +133,28 @@ class _DeviceDeatailsState extends State<DeviceDeatails> {
                         fontSize: 24.0),
                   ),
                 ),
-                StreamBuilder(
-                  stream: bleController.selectedDevice!.state,
-                  initialData: BluetoothDeviceState.disconnected,
-                  builder: (BuildContext context, AsyncSnapshot snapshot) {
-                    return snapshot.data == BluetoothDeviceState.connected
-                        ? IconButton(
-                            onPressed: () async {
-                              await DeviceDbService().addDeviceToDB();
-                              await DeviceDbService().queryDeviceDetails();
-                            },
-                            icon: const Icon(Icons.save),
-                            color: Colors.white,
-                            iconSize: 20.0,
-                          )
-                        : const SizedBox();
+                IconButton(
+                  onPressed: () async {
+                    // SQFLITE FUNCTIONALITY
+                    // await SqlDbService().addDeviceToDB();
+                    // await SqlDbService().queryDetails();
+                    deviceDetailsController.commissionedDate =
+                        deviceDetailsController.date;
+                    DbService()
+                        .saveDevice(bleController.selectedDevice!, false);
                   },
-                ),
+                  icon: const Icon(Icons.save),
+                  color: Colors.white,
+                  iconSize: 20.0,
+                )
               ],
             ),
             centerTitle: true,
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios),
-              onPressed: () => showDialog<String>(
-                context: context,
-                builder: (BuildContext context) => AlertDialog(
-                  content: CommonWidgets().text(
-                    text:
-                        'Do you want to save the device ${deviceDetailsController.deviceName.value.text} ?',
-                    size: 16.0,
-                    fontFamily: 'karbon',
-                    fontWeight: FontWeight.w600,
-                    textColor: Colors.black,
-                  ),
-                  actions: <Widget>[
-                    TextButton(
-                      onPressed: () => {
-                        BleService()
-                            .disconnectToDevice(bleController.selectedDevice!),
-                        Get.to(
-                          () => const Devices(),
-                        )
-                      },
-                      child: CommonWidgets().text(
-                        text: 'Cancel',
-                        size: 14.0,
-                        fontWeight: FontWeight.w600,
-                        textColor: Colors.red,
-                        fontFamily: 'Karbon',
-                      ),
-                    ),
-                    TextButton(
-                      onPressed: () async {
-                        await DeviceDbService().addDeviceToDB();
-                        Get.to(
-                          () => const Devices(),
-                        );
-                      },
-                      child: CommonWidgets().text(
-                        text: 'Ok',
-                        size: 14.0,
-                        fontWeight: FontWeight.w600,
-                        textColor: Theme.of(context).colorScheme.primary,
-                        fontFamily: 'Karbon',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              onPressed: () async {
+                await showDeviceSavingDialogBeforeLeaving();
+              },
             ),
           ),
           body: Column(
@@ -213,55 +193,52 @@ class _DeviceDeatailsState extends State<DeviceDeatails> {
                                           GestureDetector(
                                             onTap: () {
                                               showDialog(
-                                                context: context,
-                                                builder:
-                                                    (BuildContext context) =>
-                                                        changeDeviceNameDialog(
-                                                  context,
-                                                ),
-                                              );
+                                                  context: context,
+                                                  builder: (BuildContext
+                                                          context) =>
+                                                      _inputDialog(context));
                                             },
                                             child: CommonWidgets().text(
-                                              text: deviceDetailsController
-                                                  .deviceName.value.text,
-                                              size: 24.0,
-                                              fontWeight: FontWeight.w600,
-                                              textColor: const Color.fromRGBO(
-                                                  65, 64, 66, 1),
-                                              fontFamily: 'karbon',
-                                            ),
+                                                bleController.selectedDevice !=
+                                                        null
+                                                    ? bleController
+                                                        .selectedDevice!.name
+                                                    : '',
+                                                24,
+                                                FontWeight.w600,
+                                                TextAlign.start,
+                                                const Color.fromRGBO(
+                                                    65, 64, 66, 1),
+                                                'karbon'),
                                           ),
-                                          Obx(
-                                            () {
-                                              return CommonWidgets().text(
-                                                text:
-                                                    'Last Updated ${deviceDetailsController.lastUpdatedDate.value}',
-                                                size: 14.0,
-                                                fontWeight: FontWeight.w600,
-                                                textColor: Colors.grey,
-                                                fontFamily: 'karbon',
-                                              );
-                                            },
-                                          ),
+                                          CommonWidgets().text(
+                                              bleController.connectedDevice !=
+                                                      null
+                                                  ? 'Last Updated ${deviceDetailsController.date.toString()}'
+                                                  : deviceDetailsController
+                                                      .commissionedDate,
+                                              14,
+                                              FontWeight.w600,
+                                              TextAlign.start,
+                                              Colors.grey,
+                                              'karbon'),
                                         ],
                                       ),
                                       if (bleController.selectedDevice != null)
                                         StreamBuilder(
-                                          stream: bleController
-                                              .selectedDevice!.state,
+                                          stream:FlutterBluePlus.instance.state,
                                           initialData:
-                                              BluetoothDeviceState.disconnected,
+                                          BluetoothState.off,
                                           builder: (BuildContext context,
                                               AsyncSnapshot snapshot) {
                                             return snapshot.data ==
-                                                    BluetoothDeviceState
-                                                        .connected
+                                                BluetoothState.on
                                                 ? Icon(
                                                     Icons.bluetooth,
                                                     color: Theme.of(context)
                                                         .colorScheme
                                                         .primary,
-                                                    size: 20.0,
+                                                    size: 20,
                                                   )
                                                 : GestureDetector(
                                                     onTap: () {
@@ -271,8 +248,7 @@ class _DeviceDeatailsState extends State<DeviceDeatails> {
                                                                 context) =>
                                                             CommonWidgets()
                                                                 .connectConfirmDialog(
-                                                                    context:
-                                                                        context),
+                                                                    context),
                                                       );
                                                     },
                                                     child: Icon(
@@ -280,7 +256,7 @@ class _DeviceDeatailsState extends State<DeviceDeatails> {
                                                       color: Theme.of(context)
                                                           .colorScheme
                                                           .primary,
-                                                      size: 20.0,
+                                                      size: 20,
                                                     ),
                                                   );
                                           },
@@ -308,14 +284,13 @@ class _DeviceDeatailsState extends State<DeviceDeatails> {
                                                 2.1,
                                             child: Obx(
                                               () => CommonWidgets().text(
-                                                text:
-                                                    'Model: ${deviceDetailsController.model.value != '' ? deviceDetailsController.model.value : '--'}',
-                                                size: 14.0,
-                                                fontWeight: FontWeight.w600,
-                                                textColor: const Color.fromRGBO(
-                                                    65, 64, 66, 1),
-                                                fontFamily: 'karbon',
-                                              ),
+                                                  'Model: ${deviceDetailsController.model.value != '' ? deviceDetailsController.model.value : '--'}',
+                                                  14,
+                                                  FontWeight.w600,
+                                                  TextAlign.start,
+                                                  const Color.fromRGBO(
+                                                      65, 64, 66, 1),
+                                                  'karbon'),
                                             ),
                                           ),
                                           SizedBox(
@@ -325,14 +300,13 @@ class _DeviceDeatailsState extends State<DeviceDeatails> {
                                                 2.1,
                                             child: Obx(
                                               () => CommonWidgets().text(
-                                                text:
-                                                    'Serial: ${deviceDetailsController.serial.value != '' ? deviceDetailsController.serial.value : '--'}',
-                                                size: 14.0,
-                                                fontWeight: FontWeight.w600,
-                                                textColor: const Color.fromRGBO(
-                                                    65, 64, 66, 1),
-                                                fontFamily: 'karbon',
-                                              ),
+                                                  'Serial: ${deviceDetailsController.serial.isNotEmpty ? deviceDetailsController.serial.value : '--'}',
+                                                  14,
+                                                  FontWeight.w600,
+                                                  TextAlign.start,
+                                                  const Color.fromRGBO(
+                                                      65, 64, 66, 1),
+                                                  'karbon'),
                                             ),
                                           ),
                                           SizedBox(
@@ -340,19 +314,29 @@ class _DeviceDeatailsState extends State<DeviceDeatails> {
                                                     .size
                                                     .width /
                                                 2.1,
+                                            child: CommonWidgets().text(
+                                                'Commissioned: ${bleController.connectedDevice != null ? deviceDetailsController.commissionedDate.toString() : bleController.commissionedDate}',
+                                                14,
+                                                FontWeight.w600,
+                                                TextAlign.start,
+                                                const Color.fromRGBO(
+                                                    65, 64, 66, 1),
+                                                'karbon'),
+                                          ),
+                                          SizedBox(
+                                            width: MediaQuery.of(context)
+                                                    .size
+                                                    .width /
+                                                2.1,
                                             child: Obx(
-                                              () {
-                                                return CommonWidgets().text(
-                                                  text:
-                                                      'Commissioned: ${deviceDetailsController.commissionedDate}',
-                                                  size: 14.0,
-                                                  fontWeight: FontWeight.w600,
-                                                  textColor:
-                                                      const Color.fromRGBO(
-                                                          65, 64, 66, 1),
-                                                  fontFamily: 'karbon',
-                                                );
-                                              },
+                                              () => CommonWidgets().text(
+                                                  'ODU Version: ${deviceDetailsController.oduVersion.value != '' ? deviceDetailsController.oduVersion.value : '--'}',
+                                                  14,
+                                                  FontWeight.w600,
+                                                  TextAlign.start,
+                                                  const Color.fromRGBO(
+                                                      65, 64, 66, 1),
+                                                  'karbon'),
                                             ),
                                           ),
                                           SizedBox(
@@ -362,14 +346,13 @@ class _DeviceDeatailsState extends State<DeviceDeatails> {
                                                 2.1,
                                             child: Obx(
                                               () => CommonWidgets().text(
-                                                text:
-                                                    'ODU Version: ${deviceDetailsController.oduVersion.value != '' ? deviceDetailsController.oduVersion.value : '--'}',
-                                                size: 14.0,
-                                                fontWeight: FontWeight.w600,
-                                                textColor: const Color.fromRGBO(
-                                                    65, 64, 66, 1),
-                                                fontFamily: 'karbon',
-                                              ),
+                                                  'IDU Version: ${deviceDetailsController.iduVersion.value != '' ? deviceDetailsController.iduVersion.value : '--'}',
+                                                  14,
+                                                  FontWeight.w600,
+                                                  TextAlign.start,
+                                                  const Color.fromRGBO(
+                                                      65, 64, 66, 1),
+                                                  'karbon'),
                                             ),
                                           ),
                                           SizedBox(
@@ -379,39 +362,54 @@ class _DeviceDeatailsState extends State<DeviceDeatails> {
                                                 2.1,
                                             child: Obx(
                                               () => CommonWidgets().text(
-                                                text:
-                                                    'IDU Version: ${deviceDetailsController.iduVersion.value != '' ? deviceDetailsController.iduVersion.value : '--'}',
-                                                size: 14.0,
-                                                fontWeight: FontWeight.w600,
-                                                textColor: const Color.fromRGBO(
-                                                    65, 64, 66, 1),
-                                                fontFamily: 'karbon',
-                                              ),
+                                                  'Active Error: ${deviceDetailsController.activeError.value != '' ? deviceDetailsController.activeError.value : '--'}',
+                                                  14,
+                                                  FontWeight.w600,
+                                                  TextAlign.start,
+                                                  const Color.fromRGBO(
+                                                      65, 64, 66, 1),
+                                                  'karbon'),
                                             ),
                                           ),
                                         ],
                                       ),
                                       Column(
                                         children: [
-                                          const Icon(
-                                            Icons.location_on,
-                                            color: Colors.black,
-                                            size: 20.0,
-                                          ),
+                                          Obx(() => bleController.currentAddress
+                                                      .value.isNotEmpty &&
+                                                  showLocationIcon
+                                              ? const Icon(
+                                                  Icons.location_on,
+                                                  color: Colors.black,
+                                                  size: 20.0,
+                                                )
+                                              : const Icon(
+                                                  Icons.location_off,
+                                                  color: Colors.black,
+                                                  size: 20.0,
+                                                )),
                                           SizedBox(
                                             width: MediaQuery.of(context)
                                                     .size
                                                     .width *
                                                 0.3,
-                                            child: CommonWidgets().text(
-                                              text: bleController
-                                                  .currentAddress.value
-                                                  .toString(),
-                                              size: 16.0,
-                                              fontWeight: FontWeight.w600,
-                                              textColor: Colors.black,
-                                              fontFamily: 'karbon',
-                                            ),
+                                            child: Obx(() => CommonWidgets()
+                                                .text(
+                                                    bleController
+                                                                .currentAddress
+                                                                .value
+                                                                .isNotEmpty &&
+                                                            showLocationIcon
+                                                        ? bleController
+                                                            .currentAddress
+                                                            .value
+                                                            .toString()
+                                                        : '',
+                                                    16.0,
+                                                    FontWeight.w600,
+                                                    TextAlign.end,
+                                                    Colors.black,
+                                                    'karbon')),
                                           ),
                                         ],
                                       )
@@ -531,7 +529,8 @@ class _DeviceDeatailsState extends State<DeviceDeatails> {
     );
   }
 
-  Widget changeDeviceNameDialog(BuildContext context) {
+  Widget _inputDialog(BuildContext context) {
+    deviceName.clear();
     return Dialog(
       alignment: Alignment.center,
       child: SizedBox(
@@ -545,13 +544,12 @@ class _DeviceDeatailsState extends State<DeviceDeatails> {
               padding: const EdgeInsets.all(10.5),
               child: TextField(
                 autofocus: true,
-                controller: deviceDetailsController.deviceName.value,
+                controller: deviceName,
                 decoration: const InputDecoration(
-                  labelText: 'Enter Device Name',
-                  border: OutlineInputBorder(),
-                  hintText: "Device Name",
-                  contentPadding: EdgeInsets.only(bottom: 7.0, left: 5.0),
-                ),
+                    labelText: 'Enter Device Name',
+                    border: OutlineInputBorder(),
+                    hintText: "Device Name",
+                    contentPadding: EdgeInsets.only(bottom: 7.0, left: 5.0)),
                 style: const TextStyle(fontSize: 16.0),
               ),
             ),
@@ -559,19 +557,18 @@ class _DeviceDeatailsState extends State<DeviceDeatails> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 CommonWidgets().button(
-                  name: "Submit",
-                  function: () {
-                    if (deviceDetailsController.deviceName.value.text == '') {
-                      Fluttertoast.showToast(msg: "name can't be empty");
-                    } else {
-                      bleController.newDeviceName = deviceName.text;
-                      Navigator.of(context).pop();
-                    }
-                  },
-                  buttonColor: Theme.of(context).colorScheme.primary,
-                  width: 100.0,
-                  height: 42.0,
-                ),
+                    name: "Submit",
+                    function: () {
+                      if (deviceName.text == '') {
+                        Fluttertoast.showToast(msg: "name can't be empty");
+                      } else {
+                        bleController.newDeviceName = deviceName.text;
+                        Navigator.of(context).pop();
+                      }
+                    },
+                    buttonColor: Theme.of(context).colorScheme.primary,
+                    width: 100.0,
+                    height: 42.0),
                 const SizedBox(
                   width: 10.0,
                 ),
@@ -580,6 +577,48 @@ class _DeviceDeatailsState extends State<DeviceDeatails> {
           ],
         ),
       ),
+    );
+  }
+
+  showDeviceSavingDialogBeforeLeaving() {
+    return Get.defaultDialog(
+      title: "Do you want to save the device?",
+      middleText: '',
+      actions: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CommonWidgets().richText(
+              name: 'Cancel',
+              color: Colors.red,
+              size: 16.0,
+              function: () async {
+                BleService().disconnectToDevice(bleController.selectedDevice!);
+                Get.to(
+                  () => const Devices(),
+                );
+              },
+            ),
+            const SizedBox(
+              width: 40.0,
+            ),
+            CommonWidgets().richText(
+              name: 'Ok',
+              color: Theme.of(context).colorScheme.primary,
+              size: 16.0,
+              function: () async {
+                await DbService().saveDevice(
+                  bleController.selectedDevice!,
+                  false,
+                );
+                Get.to(
+                  () => const Devices(),
+                );
+              },
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

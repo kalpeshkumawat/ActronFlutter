@@ -4,6 +4,7 @@ import 'package:airlink/views/devices.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/ble_controller.dart';
+import '../controllers/system_configuration_controller.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);
@@ -16,7 +17,8 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   States currentVisible = States.none;
   final bleController = Get.put(BleController(), tag: 'bleController');
-
+  final systemConfigurationController = Get.put(SystemConfigurationController(),
+      tag: 'systemConfigurationController');
   final homeController = Get.put(HomeController(), tag: 'homeController');
   @override
   void initState() {

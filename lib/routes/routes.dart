@@ -1,16 +1,17 @@
 import 'package:airlink/views/connecting_to_device.dart';
 import 'package:airlink/views/connection_successfull.dart';
 import 'package:airlink/views/deviceScreen/device_details.dart';
-import 'package:airlink/views/devices.dart';
-import 'package:airlink/views/devices_found.dart';
 import 'package:airlink/views/deviceScreen/error_history.dart';
 import 'package:airlink/views/deviceScreen/graph.dart';
+import 'package:airlink/views/deviceScreen/system_configuration.dart';
+import 'package:airlink/views/devices_found.dart';
 import 'package:airlink/views/pairing_screen.dart';
 import 'package:airlink/views/search_screen.dart';
 import 'package:airlink/views/splash_screen.dart';
-import 'package:airlink/views/deviceScreen/system_configuration.dart';
 import 'package:get/get.dart';
+
 import '../views/deviceScreen/sysOpsScreen/advanced_search.dart';
+import '../views/deviceScreen/sysOpsScreen/system_operations.dart';
 
 appRoutes() => [
       GetPage(
@@ -19,10 +20,11 @@ appRoutes() => [
       ),
       GetPage(
         name: '/devices',
-        page: () => const Devices(),
+        page: () => const SystemConfiguration(),
       ),
       GetPage(
         name: '/pairing',
+
         page: () => const PairingScreen(),
       ),
       GetPage(
@@ -50,8 +52,8 @@ appRoutes() => [
         page: () => const ErrorHistory(),
       ),
       GetPage(
-        name: '/systemConfiguration',
-        page: () => const SystemConfiguration(),
+        name: '/systemOperations',
+        page: () => const SystemOperations(),
       ),
       GetPage(
         name: '/advancedSearch',

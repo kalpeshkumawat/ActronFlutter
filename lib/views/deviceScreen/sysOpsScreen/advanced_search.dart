@@ -2,10 +2,10 @@ import 'package:airlink/common/common_widgets.dart';
 import 'package:airlink/controllers/ble_controller.dart';
 import 'package:airlink/controllers/search_list_controller.dart';
 import 'package:airlink/services/advanced_search_service.dart';
-import 'package:airlink/services/device_details_service.dart';
 import 'package:airlink/views/deviceScreen/sysOpsScreen/system_operations.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import '../../../controllers/device_details_controller.dart';
 
 class AdvancedSerach extends StatefulWidget {
@@ -31,7 +31,15 @@ class _AdvancedSerachState extends State<AdvancedSerach> {
   @override
   void initState() {
     searchListController.searchResult.clear();
-    DeviceDetailsService().managingPages(pageNumber: 3);
+    deviceDetailsController.deviceDetailsPage.value = false;
+    deviceDetailsController.operationsTillHpPressure.value = false;
+    deviceDetailsController.operationsTillVsdMotor.value = false;
+    deviceDetailsController.errorsCodesRegistry.value = false;
+    deviceDetailsController.errorsDatesRegistry.value = false;
+    deviceDetailsController.errorsTimesRegistry.value = false;
+    deviceDetailsController.economiserSettingPage.value = false;
+    deviceDetailsController.graphPage.value = false;
+    deviceDetailsController.advancedSearchPage.value = true;
     super.initState();
   }
 
@@ -53,7 +61,6 @@ class _AdvancedSerachState extends State<AdvancedSerach> {
           centerTitle: true,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios),
-            hoverColor: Colors.red,
             onPressed: () {
               Get.to(
                 () => const SystemOperations(),
@@ -125,12 +132,12 @@ class _AdvancedSerachState extends State<AdvancedSerach> {
                           child: Padding(
                             padding: const EdgeInsets.symmetric(vertical: 20.0),
                             child: CommonWidgets().text(
-                              text: 'Search for a parameter by name',
-                              size: 14.0,
-                              fontWeight: FontWeight.w400,
-                              textColor: const Color.fromRGBO(88, 89, 91, .7),
-                              fontFamily: 'Monstserrat',
-                            ),
+                                'Search for a parameter by name',
+                                14,
+                                FontWeight.w400,
+                                TextAlign.center,
+                                const Color.fromRGBO(88, 89, 91, .7),
+                                'Monstserrat'),
                           ),
                         )
                       : SizedBox(
@@ -171,13 +178,13 @@ class _AdvancedSerachState extends State<AdvancedSerach> {
                                         MainAxisAlignment.spaceBetween,
                                     children: [
                                       CommonWidgets().text(
-                                        text: searchListController
-                                            .searchResult[i].name,
-                                        size: 15.0,
-                                        fontWeight: FontWeight.w600,
-                                        textColor: Colors.black,
-                                        fontFamily: 'Karbon',
-                                      ),
+                                          searchListController
+                                              .searchResult[i].name,
+                                          14.0,
+                                          FontWeight.w500,
+                                          TextAlign.start,
+                                          Colors.black,
+                                          'Karbon'),
                                       Row(
                                         children: [
                                           searchListController
@@ -185,37 +192,25 @@ class _AdvancedSerachState extends State<AdvancedSerach> {
                                                   .contains('r/w')
                                               ? GestureDetector(
                                                   onTap: () {
-                                                    data.text =
-                                                        searchListController
-                                                            .searchResult[i]
-                                                            .value;
                                                     showDialog(
                                                       context: context,
                                                       builder: (BuildContext
                                                               context) =>
-                                                          CommonWidgets()
-                                                              .registerEditDialog(
-                                                        context: context,
-                                                        data: data,
-                                                        label:
-                                                            searchListController
-                                                                .searchResult[i]
-                                                                .name,
-                                                        placeholder:
-                                                            searchListController
-                                                                .searchResult[i]
-                                                                .name,
-                                                        type: TextInputType
-                                                            .number,
-                                                        register:
-                                                            searchListController
-                                                                .searchResult[i]
-                                                                .startIndex,
-                                                        value:
-                                                            searchListController
-                                                                .searchList[i]
-                                                                .value,
-                                                      ),
+                                                          CommonWidgets().registerEditDialog(
+                                                              context: context,
+                                                              data: data,
+                                                              label:
+                                                                  'please enter ',
+                                                              placeholder:
+                                                                  searchListController
+                                                                      .searchResult[
+                                                                          i]
+                                                                      .name,
+                                                              type: const TextInputType.numberWithOptions(decimal: true, signed: false),
+                                                              register: searchListController
+                                                                  .searchResult[
+                                                                      i]
+                                                                  .startIndex),
                                                     );
                                                   },
                                                   child: Icon(
@@ -227,52 +222,40 @@ class _AdvancedSerachState extends State<AdvancedSerach> {
                                                   ),
                                                 )
                                               : const SizedBox(),
-                                          searchListController
-                                                      .searchList[i].name
+                                          searchListController.searchList[i].name
                                                       .contains('Moisture') ||
-                                                  searchListController
-                                                      .searchList[i].name
+                                                  searchListController.searchList[i].name
                                                       .contains('Enthalpy') ||
-                                                  searchListController
-                                                      .searchList[i].name
-                                                      .contains(
-                                                          'Remote temp') ||
-                                                  searchListController
-                                                      .searchList[i].name
+                                                  searchListController.searchList[i].name.contains(
+                                                      'Remote temp') ||
+                                                  searchListController.searchList[i].name
                                                       .contains('Humidity') ||
-                                                  searchListController
-                                                      .searchList[i].name
+                                                  searchListController.searchList[i].name
                                                       .contains('Weighting') ||
-                                                  searchListController
-                                                      .searchList[i].name
+                                                  searchListController.searchList[i].name
                                                       .contains(
                                                           'Remote Config') ||
-                                                  searchListController
-                                                      .searchList[i].name
+                                                  searchListController.searchList[i].name
                                                       .contains('Zone') ||
-                                                  searchListController
-                                                      .searchList[i].name
+                                                  searchListController.searchList[i].name
                                                       .contains(
                                                           'Indoor Serial') ||
-                                                  searchListController
-                                                      .searchList[i].name
+                                                  searchListController.searchList[i].name
                                                       .contains(
                                                           'Indoor Model') ||
-                                                  searchListController
-                                                      .searchList[i].name
+                                                  searchListController.searchList[i].name
                                                       .contains('Damper')
                                               ? const Icon(
                                                   Icons.priority_high,
                                                   color: Colors.yellow,
                                                 )
                                               : CommonWidgets().text(
-                                                  text: searchListController
-                                                      .searchResult[i].value,
-                                                  size: 14.0,
-                                                  fontWeight: FontWeight.w600,
-                                                  textColor: Colors.black,
-                                                  fontFamily: 'Karbon',
-                                                ),
+                                                  searchListController.searchResult[i].value,
+                                                  14.0,
+                                                  FontWeight.w600,
+                                                  TextAlign.end,
+                                                  Colors.black,
+                                                  'Karbon'),
                                         ],
                                       ),
                                     ],

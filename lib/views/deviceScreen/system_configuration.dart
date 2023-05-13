@@ -1,14 +1,15 @@
 import 'package:airlink/common/common_widgets.dart';
-import 'package:airlink/controllers/home_controller.dart';
 import 'package:airlink/controllers/packet_frame_controller.dart';
-import 'package:airlink/models/system_config_model.dart';
-import 'package:airlink/services/device_details_service.dart';
+import 'package:flutter_email_sender/flutter_email_sender.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
+
 import '../../controllers/ble_controller.dart';
 import '../../controllers/device_details_controller.dart';
 import '../../controllers/system_configuration_controller.dart';
 import '../../services/ble_service.dart';
+import '../../services/import_export_service.dart';
 
 class SystemConfiguration extends StatefulWidget {
   const SystemConfiguration({Key? key}) : super(key: key);
@@ -21,7 +22,6 @@ class _SystemConfigurationState extends State<SystemConfiguration> {
   final bleController = Get.find<BleController>(tag: 'bleController');
   final deviceDetailsController =
       Get.find<DeviceDetailsController>(tag: 'deviceDetailsController');
-  final homeController = Get.find<HomeController>(tag: 'homeController');
   final systemConfigurationController = Get.find<SystemConfigurationController>(
       tag: 'systemConfigurationController');
   late ScrollController _scrollController;
@@ -29,43 +29,26 @@ class _SystemConfigurationState extends State<SystemConfiguration> {
   @override
   void initState() {
     _scrollController = ScrollController();
-    DeviceDetailsService().managingPages(pageNumber: 4);
+    deviceDetailsController.economiserSettingPage.value = true;
+    deviceDetailsController.deviceDetailsPage.value = false;
+    deviceDetailsController.operationsTillHpPressure.value = false;
+    deviceDetailsController.operationsTillVsdMotor.value = false;
+    deviceDetailsController.errorsCodesRegistry.value = false;
+    deviceDetailsController.errorsDatesRegistry.value = false;
+    deviceDetailsController.errorsTimesRegistry.value = false;
+    deviceDetailsController.graphPage.value = false;
+    deviceDetailsController.advancedSearchPage.value = false;
     if (bleController.connectedDevice != null) {
       BleService().sendPackets(150, PacketFrameController().sysConfig);
-    } else {
-      getSysConfigData();
     }
     super.initState();
   }
 
   @override
   void dispose() {
-    deviceDetailsController.systemConfigurePage.value = false;
+    deviceDetailsController.economiserSettingPage.value = false;
     systemConfigurationController.installer.value.text = '';
     super.dispose();
-  }
-
-  getSysConfigData() {
-    for (SystemConfigModel element in homeController.deviceSystemConfigData) {
-      systemConfigurationController.lowPwm.value.text =
-          element.lowPwm.toString();
-      systemConfigurationController.medPwm.value.text =
-          element.medPwm.toString();
-      systemConfigurationController.highPwm.value.text =
-          element.highPwm.toString();
-      systemConfigurationController.lowRpm.value.text =
-          element.lowRpm.toString();
-      systemConfigurationController.medRpm.value.text =
-          element.medRpm.toString();
-      systemConfigurationController.highRpm.value.text =
-          element.highRpm.toString();
-      systemConfigurationController.fanFilter.value.text =
-          element.fanFilterCountdown.toString();
-      systemConfigurationController.controlModeSelectedValue = int.parse(
-        element.controlMode.toString(),
-      );
-      deviceDetailsController.updateEconomiserSettings(element);
-    }
   }
 
   @override
@@ -88,7 +71,7 @@ class _SystemConfigurationState extends State<SystemConfiguration> {
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios),
             onPressed: () {
-              deviceDetailsController.systemConfigurePage.value = false;
+              deviceDetailsController.economiserSettingPage.value = false;
               systemConfigurationController.installer.value.text = '';
               Get.back();
             },
@@ -98,7 +81,7 @@ class _SystemConfigurationState extends State<SystemConfiguration> {
         body: Column(
           children: [
             SizedBox(
-              height: MediaQuery.of(context).size.height * 0.7,
+              height: MediaQuery.of(context).size.height * 0.75,
               child: Scrollbar(
                 controller: _scrollController,
                 thumbVisibility: true,
@@ -210,46 +193,58 @@ class _SystemConfigurationState extends State<SystemConfiguration> {
               ),
             ),
             // mail box
-            SizedBox(
-              height: MediaQuery.of(context).size.height * 0.17,
-              child: Column(
-                children: [
-                  ElevatedButton.icon(
+            Column(
+              children: [
+                ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(40.0),
+                    )),
                     onPressed: () {
-                      systemConfigurationController.sendEmail(
-                          emailType: 'Registration',
-                          body: '''
+                      sendEmail('Registration', '''
           This e-mail contains the system information for ${deviceDetailsController.model}: ${deviceDetailsController.serial}
           
           Registered by ${systemConfigurationController.installer.value.text}
           Location is ${bleController.currentAddress.value}
-          ''',
-                          recipient: 'warranty@actronair.com.au');
+          ''');
                     },
-                    icon: const Icon(
-                      Icons.mail,
-                      size: 20.0,
-                    ),
-                    label: CommonWidgets().text(
-                      text: 'Warranty Registration',
-                      size: 16.0,
-                      fontWeight: FontWeight.w600,
-                      textColor: Colors.white,
-                      fontFamily: 'Karbon',
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20.0),
+                    icon: const Padding(
+                      padding: EdgeInsets.all(18.0),
+                      child: Icon(
+                        Icons.mail,
+                        size: 20.0,
                       ),
                     ),
-                  ),
-                ],
-              ),
+                    label: CommonWidgets().text(
+                        'Warranty Registration',
+                        16.0,
+                        FontWeight.w600,
+                        TextAlign.center,
+                        Colors.white,
+                        'Karbon')),
+              ],
             ),
           ],
         ),
       ),
     );
+  }
+
+  sendEmail(emailType, body) async {
+    var date = DateFormat.yMMMMd('en_US').format(DateTime.now());
+    var file = await ImportExportService().readFile();
+    // systemConfigurationController.currentAddress =
+    //     await systemConfigurationController.getAddressFromLatLng();
+    debugPrint('file is $file');
+    final Email email = Email(
+      body: body,
+      subject:
+          '${deviceDetailsController.model}: ${deviceDetailsController.serial} $emailType $date',
+      recipients: ['warranty@actronair.com.au'],
+      attachmentPaths: [file],
+      isHTML: false,
+    );
+    await FlutterEmailSender.send(email);
   }
 
   List<ItemModel> itemData = <ItemModel>[

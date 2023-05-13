@@ -1,6 +1,5 @@
 import 'package:airlink/common/common_widgets.dart';
 import 'package:airlink/controllers/ble_controller.dart';
-import 'package:airlink/controllers/system_configuration_controller.dart';
 import 'package:airlink/views/devices.dart';
 import 'package:airlink/views/infoScreen/terms_&_conditions.dart';
 import 'package:flutter/material.dart';
@@ -20,8 +19,6 @@ class Information extends StatefulWidget {
 
 class _InformationState extends State<Information> {
   final bleController = Get.find<BleController>(tag: 'bleController');
-  final systemConfigurationController = Get.find<SystemConfigurationController>(
-      tag: 'systemConfigurationController');
   List contactInfo = [
     {
       'icon': 'assets/call.png',
@@ -91,12 +88,12 @@ class _InformationState extends State<Information> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     CommonWidgets().text(
-                      text: 'Terms & Condition',
-                      size: 16.0,
-                      fontWeight: FontWeight.w600,
-                      textColor: const Color.fromRGBO(88, 89, 91, 1),
-                      fontFamily: 'Karbon',
-                    ),
+                        'Terms & Condition',
+                        16.0,
+                        FontWeight.w600,
+                        TextAlign.center,
+                        const Color.fromRGBO(88, 89, 91, 1),
+                        'Karbon'),
                     Icon(
                       Icons.navigate_next,
                       color: Theme.of(context).colorScheme.primary,
@@ -123,20 +120,20 @@ class _InformationState extends State<Information> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       CommonWidgets().text(
-                        text: 'Software Version',
-                        size: 14.0,
-                        fontWeight: FontWeight.w600,
-                        textColor: const Color.fromRGBO(188, 190, 192, 1),
-                        fontFamily: 'Karbon',
-                      ),
+                          'Software Version',
+                          14.0,
+                          FontWeight.w600,
+                          TextAlign.start,
+                          const Color.fromRGBO(188, 190, 192, 1),
+                          'Karbon'),
                       Obx(
                         () => CommonWidgets().text(
-                          text: bleController.appVersion.value.toString(),
-                          size: 14.0,
-                          fontWeight: FontWeight.w600,
-                          textColor: const Color.fromRGBO(65, 64, 66, 1),
-                          fontFamily: 'Karbon',
-                        ),
+                            bleController.appVersion.value.toString(),
+                            14.0,
+                            FontWeight.w600,
+                            TextAlign.start,
+                            const Color.fromRGBO(65, 64, 66, 1),
+                            'Karbon'),
                       ),
                     ],
                   ),
@@ -155,21 +152,19 @@ class _InformationState extends State<Information> {
                                     MainAxisAlignment.spaceBetween,
                                 children: [
                                   CommonWidgets().text(
-                                    text: bleController.savedDevices[i]['name'],
-                                    size: 14.0,
-                                    fontWeight: FontWeight.w600,
-                                    textColor:
-                                        const Color.fromRGBO(188, 190, 192, 1),
-                                    fontFamily: 'Karbon',
-                                  ),
+                                      bleController.savedDevices[i]['name'],
+                                      14.0,
+                                      FontWeight.w600,
+                                      TextAlign.start,
+                                      const Color.fromRGBO(188, 190, 192, 1),
+                                      'Karbon'),
                                   CommonWidgets().text(
-                                    text: bleController.deviceVersion,
-                                    size: 14.0,
-                                    fontWeight: FontWeight.w600,
-                                    textColor:
-                                        const Color.fromRGBO(65, 64, 66, 1),
-                                    fontFamily: 'Karbon',
-                                  ),
+                                      bleController.savedDevices[i]['version'],
+                                      14.0,
+                                      FontWeight.w600,
+                                      TextAlign.start,
+                                      const Color.fromRGBO(65, 64, 66, 1),
+                                      'Karbon'),
                                 ],
                               ),
                             );
@@ -198,12 +193,12 @@ class _InformationState extends State<Information> {
                   height: 15.0,
                 ),
                 CommonWidgets().text(
-                  text: 'For Service or technical support, Please Contact',
-                  size: 14.0,
-                  fontWeight: FontWeight.w600,
-                  textColor: const Color.fromRGBO(88, 89, 91, 1),
-                  fontFamily: "Karbon",
-                ),
+                    'For Service or technical support, Please Contact',
+                    14.0,
+                    FontWeight.w600,
+                    TextAlign.center,
+                    const Color.fromRGBO(88, 89, 91, 1),
+                    "Karbon"),
                 const SizedBox(
                   height: 5.0,
                 ),
@@ -225,21 +220,19 @@ class _InformationState extends State<Information> {
                               width: 25,
                             ),
                             Padding(
-                              padding:
-                                  const EdgeInsets.only(top: 6.0, left: 3.0),
-                              child: CommonWidgets().text(
-                                text: contactInfo[i]['text'],
-                                size: contactInfo[i]['text'].contains('1800')
-                                    ? 18.0
-                                    : 16.0,
-                                fontWeight: FontWeight.w600,
-                                textColor:
+                                padding:
+                                    const EdgeInsets.only(top: 6.0, left: 3.0),
+                                child: CommonWidgets().text(
+                                    contactInfo[i]['text'],
+                                    contactInfo[i]['text'].contains('1800')
+                                        ? 18.0
+                                        : 16.0,
+                                    FontWeight.w600,
+                                    TextAlign.center,
                                     contactInfo[i]['text'].contains('1800')
                                         ? const Color.fromRGBO(65, 64, 66, 1)
                                         : const Color.fromRGBO(88, 89, 91, 1),
-                                fontFamily: 'Karbon',
-                              ),
-                            )
+                                    'Karbon'))
                           ],
                         ),
                         onTap: () async {
@@ -248,16 +241,13 @@ class _InformationState extends State<Information> {
                           if (contactInfo[i]['text'].contains('1800')) {
                             launchUrlString(contactInfo[i]['url']);
                           } else {
-                            systemConfigurationController.sendEmail(
-                                emailType: 'Support Request',
-                                body: '''
+                            sendEmail('Support Request', '''
      The system ${bleController.savedDevices.isNotEmpty ? bleController.savedDevices[0]['model'] : ''}: ${bleController.savedDevices.isNotEmpty ? bleController.savedDevices[0]['serial'] : ''} needs technical support
      Registered by <Installer>
      Location is ${bleController.currentAddress}
      Please insert technical details here:
 
-     ''',
-                                recipient: 'service@actronair.com.au');
+     ''');
                           }
                         },
                       );
@@ -270,5 +260,27 @@ class _InformationState extends State<Information> {
         ),
       ),
     );
+  }
+
+  sendEmail(emailType, body) async {
+    if (bleController.savedDevices.isEmpty) {
+      CommonWidgets().errorSnackbar(
+        title: '',
+        message: 'Please save a device before sending mail.',
+      );
+    } else {
+      var date = DateFormat.yMMMMd('en_US').format(DateTime.now());
+      var file = await ImportExportService().readFile();
+      debugPrint('file is $file');
+      final Email email = Email(
+        body: body,
+        subject:
+            '${bleController.savedDevices.isNotEmpty ? bleController.savedDevices[0]['model'] : ''}: ${bleController.savedDevices.isNotEmpty ? bleController.savedDevices[0]['serial'] : ''} $emailType $date',
+        recipients: ['service@actronair.com.au'],
+        attachmentPaths: [file],
+        isHTML: false,
+      );
+      await FlutterEmailSender.send(email);
+    }
   }
 }

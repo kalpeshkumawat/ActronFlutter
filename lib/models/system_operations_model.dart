@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 SystemOperationsModel systemOperationsModelFromMap(String str) =>
-    SystemOperationsModel.fromJson(json.decode(str));
+    SystemOperationsModel.fromMap(json.decode(str));
 
 String systemOperationsModelToMap(SystemOperationsModel data) =>
     json.encode(data.toJson());
@@ -14,7 +14,7 @@ class SystemOperationsModel {
     required this.requestCompSpeed,
     required this.actualCompSpeed,
     required this.statusFlags,
-    required this.iduFanPercentage,
+    required this.iduFanPercent,
     required this.iduFanRpm,
     required this.oduFanSpeed,
     required this.oduFanRpm,
@@ -31,7 +31,6 @@ class SystemOperationsModel {
     required this.oduState,
     required this.oduStateTime,
     required this.superheat,
-    required this.dischargeSuperheat,
     required this.reverseValve,
     required this.crankCaseHeater,
     required this.pfc,
@@ -45,7 +44,7 @@ class SystemOperationsModel {
   String requestCompSpeed;
   String actualCompSpeed;
   String statusFlags;
-  String iduFanPercentage;
+  String iduFanPercent;
   String iduFanRpm;
   String oduFanSpeed;
   String oduFanRpm;
@@ -62,14 +61,13 @@ class SystemOperationsModel {
   String oduState;
   String oduStateTime;
   String superheat;
-  String dischargeSuperheat;
   String reverseValve;
   String crankCaseHeater;
   String pfc;
   String fault;
   String compRun;
 
-  factory SystemOperationsModel.fromJson(Map<String, dynamic> json) =>
+  factory SystemOperationsModel.fromMap(Map<String, dynamic> json) =>
       SystemOperationsModel(
         id: json["id"],
         controlMode: json["controlMode"],
@@ -77,16 +75,16 @@ class SystemOperationsModel {
         requestCompSpeed: json["requestCompSpeed"],
         actualCompSpeed: json["actualCompSpeed"],
         statusFlags: json["statusFlags"],
-        iduFanPercentage: json["iduFanPercentage"],
-        iduFanRpm: json["iDUFanRpm"],
+        iduFanPercent: json["iduFanPercent"],
+        iduFanRpm: json["iduFanRpm"],
         oduFanSpeed: json["oduFanSpeed"],
         oduFanRpm: json["oduFanRpm"],
-        iduCoilTemp: json["iduCoilTemperature"],
-        oduAmbientTemp: json["oduAmbientTemperature"],
-        oduCoilTemp: json["oduCoilTemperature"],
-        dischargeTemp: json["dischargeTemperature"],
-        suctionTemp: json["suctionTemperature"],
-        roomTemp: json["roomTemperature"],
+        iduCoilTemp: json["iduCoilTemp"],
+        oduAmbientTemp: json["oduAmbientTemp"],
+        oduCoilTemp: json["oduCoilTemp"],
+        dischargeTemp: json["dischargeTemp"],
+        suctionTemp: json["suctionTemp"],
+        roomTemp: json["roomTemp"],
         hpPressure: json["hpPressure"],
         lpPressure: json["lpPressure"],
         exvTarget: json["exvTarget"],
@@ -94,7 +92,6 @@ class SystemOperationsModel {
         oduState: json["oduState"],
         oduStateTime: json["oduStateTime"],
         superheat: json["superheat"],
-        dischargeSuperheat: json["dischargeSuperheat"],
         reverseValve: json["reverseValve"],
         crankCaseHeater: json["crankCaseHeater"],
         pfc: json["pfc"],
@@ -109,16 +106,16 @@ class SystemOperationsModel {
         "requestCompSpeed": requestCompSpeed,
         "actualCompSpeed": actualCompSpeed,
         "statusFlags": statusFlags,
-        "iduFanPercentage": iduFanPercentage,
+        "iduFanPercent": iduFanPercent,
         "iduFanRpm": iduFanRpm,
         "oduFanSpeed": oduFanSpeed,
         "oduFanRpm": oduFanRpm,
-        "iduCoilTemperature": iduCoilTemp,
-        "oduAmbientTemperature": oduAmbientTemp,
-        "oduCoilTemperature": oduCoilTemp,
-        "dischargeTemperature": dischargeTemp,
-        "suctionTemperature": suctionTemp,
-        "roomTemperature": roomTemp,
+        "iduCoilTemp": iduCoilTemp,
+        "oduAmbientTemp": oduAmbientTemp,
+        "oduCoilTemp": oduCoilTemp,
+        "dischargeTemp": dischargeTemp,
+        "suctionTemp": suctionTemp,
+        "roomTemp": roomTemp,
         "hpPressure": hpPressure,
         "lpPressure": lpPressure,
         "exvTarget": exvTarget,
@@ -126,15 +123,10 @@ class SystemOperationsModel {
         "oduState": oduState,
         "oduStateTime": oduStateTime,
         "superheat": superheat,
-        "dischargeSuperheat": dischargeSuperheat,
         "reverseValve": reverseValve,
         "crankCaseHeater": crankCaseHeater,
         "pfc": pfc,
         "fault": fault,
         "compRun": compRun,
       };
-  int length() {
-    Map data = toJson();
-    return data.keys.length;
-  }
 }

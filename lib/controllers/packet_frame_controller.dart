@@ -18,8 +18,23 @@ class PacketFrameController extends GetxController {
     4,
     115,
   ];
+  List deviceDetailsRegisters1 = [
+    00,
+    00,
+    00,
+    00,
+    00,
+    00,
+    00,
+    00,
+    00,
+    00,
+    00,
+    00,
+  ];
+
   List sysOps = [
-    8,
+      8,
     11,
     12,
     13,
@@ -42,13 +57,6 @@ class PacketFrameController extends GetxController {
     46,
     47,
     500,
-  ];
-  List noErrorCodes = [
-    51,
-    52,
-    53,
-    54,
-    55,
   ];
   List errorCodes = [
     1500,
@@ -102,6 +110,45 @@ class PacketFrameController extends GetxController {
     1548,
     1549,
   ];
+  List errorCodes1 = [
+    1500,
+    1501,
+    1502,
+    1503,
+    1504,
+    1505,
+    1506,
+    1507,
+    1508,
+    1509,
+    1510,
+    1511,
+    1512,
+    1513,
+    1514,
+    1515,
+    1516,
+    1517,
+    1518,
+    1519,
+    1520,
+    1521,
+    1522,
+    1523,
+    1524,
+    1525,
+    1526,
+    1527,
+    1528,
+    1529,
+    1530,
+    1531,
+    1532,
+    1533,
+    1534,
+    1535
+  ];
+
   List errorTime = [
     1600,
     1601,
